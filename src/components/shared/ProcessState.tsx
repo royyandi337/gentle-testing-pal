@@ -10,8 +10,8 @@ export function ProcessState({
   progress,
 }: {
   phase: Phase;
-  message?: string;
-  progress?: number;
+  message?: string | undefined;
+  progress?: number | undefined;
 }) {
   if (phase === "idle") return null;
 
