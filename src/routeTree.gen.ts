@@ -17,6 +17,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedPasFotoRouteImport } from './routes/_authenticated/pas-foto'
 import { Route as AuthenticatedPdfToolsRouteImport } from './routes/_authenticated/pdf-tools'
 import { Route as AuthenticatedPhotoToolsRouteImport } from './routes/_authenticated/photo-tools'
+import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
 import { Route as AuthenticatedWordToolsRouteImport } from './routes/_authenticated/word-tools'
 
 const IndexRoute = IndexRouteImport.update({
@@ -58,6 +59,11 @@ const AuthenticatedPhotoToolsRoute = AuthenticatedPhotoToolsRouteImport.update({
   path: '/photo-tools',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedRiwayatRoute = AuthenticatedRiwayatRouteImport.update({
+  id: '/riwayat',
+  path: '/riwayat',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedWordToolsRoute = AuthenticatedWordToolsRouteImport.update({
   id: '/word-tools',
   path: '/word-tools',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/pas-foto': typeof AuthenticatedPasFotoRoute
   '/pdf-tools': typeof AuthenticatedPdfToolsRoute
   '/photo-tools': typeof AuthenticatedPhotoToolsRoute
+  '/riwayat': typeof AuthenticatedRiwayatRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
 }
 export interface FileRoutesByTo {
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/pas-foto': typeof AuthenticatedPasFotoRoute
   '/pdf-tools': typeof AuthenticatedPdfToolsRoute
   '/photo-tools': typeof AuthenticatedPhotoToolsRoute
+  '/riwayat': typeof AuthenticatedRiwayatRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
 }
 export interface FileRoutesById {
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/_authenticated/pas-foto': typeof AuthenticatedPasFotoRoute
   '/_authenticated/pdf-tools': typeof AuthenticatedPdfToolsRoute
   '/_authenticated/photo-tools': typeof AuthenticatedPhotoToolsRoute
+  '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
   '/_authenticated/word-tools': typeof AuthenticatedWordToolsRoute
 }
 export interface FileRouteTypes {
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/pas-foto'
     | '/pdf-tools'
     | '/photo-tools'
+    | '/riwayat'
     | '/word-tools'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/pas-foto'
     | '/pdf-tools'
     | '/photo-tools'
+    | '/riwayat'
     | '/word-tools'
   id:
     | '__root__'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pas-foto'
     | '/_authenticated/pdf-tools'
     | '/_authenticated/photo-tools'
+    | '/_authenticated/riwayat'
     | '/_authenticated/word-tools'
   fileRoutesById: FileRoutesById
 }
@@ -195,6 +207,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPhotoToolsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/riwayat': {
+      id: '/_authenticated/riwayat'
+      path: '/riwayat'
+      fullPath: '/riwayat'
+      preLoaderRoute: typeof AuthenticatedRiwayatRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/word-tools': {
       id: '/_authenticated/word-tools'
       path: '/word-tools'
@@ -210,6 +229,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPasFotoRoute: typeof AuthenticatedPasFotoRoute
   AuthenticatedPdfToolsRoute: typeof AuthenticatedPdfToolsRoute
   AuthenticatedPhotoToolsRoute: typeof AuthenticatedPhotoToolsRoute
+  AuthenticatedRiwayatRoute: typeof AuthenticatedRiwayatRoute
   AuthenticatedWordToolsRoute: typeof AuthenticatedWordToolsRoute
 }
 
@@ -218,6 +238,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPasFotoRoute: AuthenticatedPasFotoRoute,
   AuthenticatedPdfToolsRoute: AuthenticatedPdfToolsRoute,
   AuthenticatedPhotoToolsRoute: AuthenticatedPhotoToolsRoute,
+  AuthenticatedRiwayatRoute: AuthenticatedRiwayatRoute,
   AuthenticatedWordToolsRoute: AuthenticatedWordToolsRoute,
 }
 
