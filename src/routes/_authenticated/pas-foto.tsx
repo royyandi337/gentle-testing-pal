@@ -257,6 +257,36 @@ function PasFotoPage() {
     toast.info("Fitur AI belum aktif. Menunggu konfigurasi AI provider di Edge Function.");
   }
 
+  const callRemoveBackground = useServerFn(removeBackground);
+
+  async function handleRemoveBackground() {
+    if (!file) {
+      toast.error("Unggah foto terlebih dahulu.");
+      return;
+    }
+    setRemovingBg(true);
+    setPhase("working");
+    setStatusMsg("AI sedang menghapus background...");
+    try {
+      const imageDataUrl = await fileToDataUrl(file);
+      const { pngDataUrl } = await callRemoveBackground({ data: { imageDataUrl } });
+      const blob = await (await fetch(pngDataUrl)).blob();
+      const cutout = new File([blob], "pas-foto-tanpa-background.png", { type: "image/png" });
+      setFile(cutout);
+      setBgId("transparent");
+      setPhase("done");
+      setStatusMsg("Background berhasil dihapus");
+      toast.success("Background berhasil dihapus");
+    } catch {
+      setPhase("error");
+      setStatusMsg("AI Remove Background gagal. Silakan coba lagi.");
+      toast.error("AI Remove Background gagal. Silakan coba lagi.");
+    } finally {
+      setRemovingBg(false);
+    }
+  }
+
+
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
