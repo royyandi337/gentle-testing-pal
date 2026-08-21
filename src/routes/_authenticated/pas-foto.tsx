@@ -616,9 +616,11 @@ function PasFotoPage() {
               <CardHeader>
                 <CardTitle className="text-base">Status Integrasi AI</CardTitle>
                 <CardDescription>
-                  Arsitektur sudah siap: Frontend → Supabase Edge Function → AI Provider → Storage →
-                  Database. Fitur aktif setelah API key AI provider dikonfigurasi sebagai secret.
+                  AI Remove Background sudah aktif: Frontend → Server Proxy (aman, tanpa API key di
+                  browser) → Hugging Face Space endpoint /png → PNG transparan kembali ke editor.
+                  Fitur AI lainnya menunggu integrasi berikutnya.
                 </CardDescription>
+
               </CardHeader>
             </Card>
           </TabsContent>
