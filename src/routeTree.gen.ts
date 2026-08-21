@@ -16,6 +16,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedPasFotoRouteImport } from './routes/_authenticated/pas-foto'
 import { Route as AuthenticatedPdfToolsRouteImport } from './routes/_authenticated/pdf-tools'
+import { Route as AuthenticatedWordToolsRouteImport } from './routes/_authenticated/word-tools'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -51,6 +52,11 @@ const AuthenticatedPdfToolsRoute = AuthenticatedPdfToolsRouteImport.update({
   path: '/pdf-tools',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWordToolsRoute = AuthenticatedWordToolsRouteImport.update({
+  id: '/word-tools',
+  path: '/word-tools',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pas-foto': typeof AuthenticatedPasFotoRoute
   '/pdf-tools': typeof AuthenticatedPdfToolsRoute
+  '/word-tools': typeof AuthenticatedWordToolsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pas-foto': typeof AuthenticatedPasFotoRoute
   '/pdf-tools': typeof AuthenticatedPdfToolsRoute
+  '/word-tools': typeof AuthenticatedWordToolsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/pas-foto': typeof AuthenticatedPasFotoRoute
   '/_authenticated/pdf-tools': typeof AuthenticatedPdfToolsRoute
+  '/_authenticated/word-tools': typeof AuthenticatedWordToolsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pas-foto'
     | '/pdf-tools'
+    | '/word-tools'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pas-foto'
     | '/pdf-tools'
+    | '/word-tools'
   id:
     | '__root__'
     | '/'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/pas-foto'
     | '/_authenticated/pdf-tools'
+    | '/_authenticated/word-tools'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -164,6 +176,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPdfToolsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/word-tools': {
+      id: '/_authenticated/word-tools'
+      path: '/word-tools'
+      fullPath: '/word-tools'
+      preLoaderRoute: typeof AuthenticatedWordToolsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -171,12 +190,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPasFotoRoute: typeof AuthenticatedPasFotoRoute
   AuthenticatedPdfToolsRoute: typeof AuthenticatedPdfToolsRoute
+  AuthenticatedWordToolsRoute: typeof AuthenticatedWordToolsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPasFotoRoute: AuthenticatedPasFotoRoute,
   AuthenticatedPdfToolsRoute: AuthenticatedPdfToolsRoute,
+  AuthenticatedWordToolsRoute: AuthenticatedWordToolsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
