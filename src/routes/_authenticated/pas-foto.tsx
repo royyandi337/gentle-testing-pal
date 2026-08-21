@@ -77,6 +77,8 @@ function PasFotoPage() {
   const [quality, setQuality] = useState(92);
   const [phase, setPhase] = useState<Phase>("idle");
   const [statusMsg, setStatusMsg] = useState<string>();
+  const [removingBg, setRemovingBg] = useState(false);
+
   const previewRef = useRef<HTMLDivElement>(null);
 
   // A4 sheet options
