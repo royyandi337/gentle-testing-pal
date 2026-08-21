@@ -224,7 +224,7 @@ function PdfToolsPage() {
                 const file = files[0];
                 if (file) {
                   const info = await pdfInfo(file);
-                  setSplitAt(Math.max(1, Math.floor(info.pageCount / 2)));
+                  setSplitAt(Math.max(1, Math.floor(info.pages / 2)));
                 }
               }}
               hint="Satu berkas PDF"
@@ -262,7 +262,7 @@ function PdfToolsPage() {
                 onClick={() =>
                   run("extract", async () => {
                     const file = manageFile[0]!;
-                    const { pageCount } = await pdfInfo(file);
+                    const { pages: pageCount } = await pdfInfo(file);
                     const indices = parsePageRanges(ranges, pageCount);
                     return [
                       { blob: await extractPages(file, indices), fileName: `${baseName(file)}-ekstrak.pdf` },
@@ -294,7 +294,7 @@ function PdfToolsPage() {
                 onClick={() =>
                   run("rotate", async () => {
                     const file = manageFile[0]!;
-                    const { pageCount } = await pdfInfo(file);
+                    const { pages: pageCount } = await pdfInfo(file);
                     const indices = parsePageRanges(ranges, pageCount);
                     return [
                       {
