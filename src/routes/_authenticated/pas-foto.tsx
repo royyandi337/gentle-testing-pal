@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Download, RotateCcw, Save, Sparkles, Wand2, Rocket, Printer } from "lucide-react";
+
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/AppShell";
 import { FileDropzone } from "@/components/shared/FileDropzone";
@@ -33,6 +35,8 @@ import {
   type Adjustments,
 } from "@/lib/image";
 import { saveResult } from "@/lib/history";
+import { removeBackground } from "@/lib/remove-bg.functions";
+
 
 const TITLE = "Pas Foto — ROY DIGITAL SOLUTION";
 const DESCRIPTION =
@@ -73,6 +77,8 @@ function PasFotoPage() {
   const [quality, setQuality] = useState(92);
   const [phase, setPhase] = useState<Phase>("idle");
   const [statusMsg, setStatusMsg] = useState<string>();
+  const [removingBg, setRemovingBg] = useState(false);
+
   const previewRef = useRef<HTMLDivElement>(null);
 
   // A4 sheet options
@@ -252,6 +258,36 @@ function PasFotoPage() {
   function aiUnavailable() {
     toast.info("Fitur AI belum aktif. Menunggu konfigurasi AI provider di Edge Function.");
   }
+
+  const callRemoveBackground = useServerFn(removeBackground);
+
+  async function handleRemoveBackground() {
+    if (!file) {
+      toast.error("Unggah foto terlebih dahulu.");
+      return;
+    }
+    setRemovingBg(true);
+    setPhase("working");
+    setStatusMsg("AI sedang menghapus background...");
+    try {
+      const imageDataUrl = await fileToDataUrl(file);
+      const { pngDataUrl } = await callRemoveBackground({ data: { imageDataUrl } });
+      const blob = await (await fetch(pngDataUrl)).blob();
+      const cutout = new File([blob], "pas-foto-tanpa-background.png", { type: "image/png" });
+      setFile(cutout);
+      setBgId("transparent");
+      setPhase("done");
+      setStatusMsg("Background berhasil dihapus");
+      toast.success("Background berhasil dihapus");
+    } catch {
+      setPhase("error");
+      setStatusMsg("AI Remove Background gagal. Silakan coba lagi.");
+      toast.error("AI Remove Background gagal. Silakan coba lagi.");
+    } finally {
+      setRemovingBg(false);
+    }
+  }
+
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -557,8 +593,12 @@ function PasFotoPage() {
                 icon={Wand2}
                 title="✨ AI Remove Background"
                 desc="Deteksi subjek otomatis, hapus latar, hasilkan PNG transparan, lalu pilih background."
-                onClick={aiUnavailable}
+                onClick={handleRemoveBackground}
+                loading={removingBg}
+                loadingLabel="AI sedang menghapus background..."
+                badge="Aktif"
               />
+
               <AiCard
                 icon={Sparkles}
                 title="✨ AI Enhance"
@@ -576,9 +616,11 @@ function PasFotoPage() {
               <CardHeader>
                 <CardTitle className="text-base">Status Integrasi AI</CardTitle>
                 <CardDescription>
-                  Arsitektur sudah siap: Frontend → Supabase Edge Function → AI Provider → Storage →
-                  Database. Fitur aktif setelah API key AI provider dikonfigurasi sebagai secret.
+                  AI Remove Background sudah aktif: Frontend → Server Proxy (aman, tanpa API key di
+                  browser) → Hugging Face Space endpoint /png → PNG transparan kembali ke editor.
+                  Fitur AI lainnya menunggu integrasi berikutnya.
                 </CardDescription>
+
               </CardHeader>
             </Card>
           </TabsContent>
@@ -718,11 +760,17 @@ function AiCard({
   title,
   desc,
   onClick,
+  loading = false,
+  loadingLabel,
+  badge = "Menunggu AI",
 }: {
   icon: typeof Wand2;
   title: string;
   desc: string;
   onClick: () => void;
+  loading?: boolean;
+  loadingLabel?: string;
+  badge?: string;
 }) {
   return (
     <Card>
@@ -731,16 +779,17 @@ function AiCard({
         <CardTitle className="flex items-center gap-2 text-base">
           {title}
           <Badge variant="secondary" className="text-xs">
-            Menunggu AI
+            {badge}
           </Badge>
         </CardTitle>
         <CardDescription>{desc}</CardDescription>
       </CardHeader>
       <CardContent>
-        <Button variant="outline" className="w-full" onClick={onClick}>
-          Jalankan
+        <Button variant="outline" className="w-full" onClick={onClick} disabled={loading}>
+          {loading ? (loadingLabel ?? "Memproses...") : "Jalankan"}
         </Button>
       </CardContent>
+
     </Card>
   );
 }
