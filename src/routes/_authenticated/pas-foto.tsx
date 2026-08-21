@@ -593,8 +593,12 @@ function PasFotoPage() {
                 icon={Wand2}
                 title="✨ AI Remove Background"
                 desc="Deteksi subjek otomatis, hapus latar, hasilkan PNG transparan, lalu pilih background."
-                onClick={aiUnavailable}
+                onClick={handleRemoveBackground}
+                loading={removingBg}
+                loadingLabel="AI sedang menghapus background..."
+                badge="Aktif"
               />
+
               <AiCard
                 icon={Sparkles}
                 title="✨ AI Enhance"
