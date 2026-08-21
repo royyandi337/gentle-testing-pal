@@ -35,6 +35,8 @@ import {
   type Adjustments,
 } from "@/lib/image";
 import { saveResult } from "@/lib/history";
+import { removeBackground } from "@/lib/remove-bg.functions";
+
 
 const TITLE = "Pas Foto — ROY DIGITAL SOLUTION";
 const DESCRIPTION =
