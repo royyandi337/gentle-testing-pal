@@ -758,11 +758,17 @@ function AiCard({
   title,
   desc,
   onClick,
+  loading = false,
+  loadingLabel,
+  badge = "Menunggu AI",
 }: {
   icon: typeof Wand2;
   title: string;
   desc: string;
   onClick: () => void;
+  loading?: boolean;
+  loadingLabel?: string;
+  badge?: string;
 }) {
   return (
     <Card>
@@ -771,16 +777,17 @@ function AiCard({
         <CardTitle className="flex items-center gap-2 text-base">
           {title}
           <Badge variant="secondary" className="text-xs">
-            Menunggu AI
+            {badge}
           </Badge>
         </CardTitle>
         <CardDescription>{desc}</CardDescription>
       </CardHeader>
       <CardContent>
-        <Button variant="outline" className="w-full" onClick={onClick}>
-          Jalankan
+        <Button variant="outline" className="w-full" onClick={onClick} disabled={loading}>
+          {loading ? (loadingLabel ?? "Memproses...") : "Jalankan"}
         </Button>
       </CardContent>
+
     </Card>
   );
 }
