@@ -13,8 +13,13 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedAkunRouteImport } from './routes/_authenticated/akun'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedPasFotoRouteImport } from './routes/_authenticated/pas-foto'
+import { Route as AuthenticatedPdfToolsRouteImport } from './routes/_authenticated/pdf-tools'
+import { Route as AuthenticatedPhotoToolsRouteImport } from './routes/_authenticated/photo-tools'
+import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
+import { Route as AuthenticatedWordToolsRouteImport } from './routes/_authenticated/word-tools'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -35,6 +40,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAkunRoute = AuthenticatedAkunRouteImport.update({
+  id: '/akun',
+  path: '/akun',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -45,20 +55,50 @@ const AuthenticatedPasFotoRoute = AuthenticatedPasFotoRouteImport.update({
   path: '/pas-foto',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPdfToolsRoute = AuthenticatedPdfToolsRouteImport.update({
+  id: '/pdf-tools',
+  path: '/pdf-tools',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPhotoToolsRoute = AuthenticatedPhotoToolsRouteImport.update({
+  id: '/photo-tools',
+  path: '/photo-tools',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRiwayatRoute = AuthenticatedRiwayatRouteImport.update({
+  id: '/riwayat',
+  path: '/riwayat',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedWordToolsRoute = AuthenticatedWordToolsRouteImport.update({
+  id: '/word-tools',
+  path: '/word-tools',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/akun': typeof AuthenticatedAkunRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pas-foto': typeof AuthenticatedPasFotoRoute
+  '/pdf-tools': typeof AuthenticatedPdfToolsRoute
+  '/photo-tools': typeof AuthenticatedPhotoToolsRoute
+  '/riwayat': typeof AuthenticatedRiwayatRoute
+  '/word-tools': typeof AuthenticatedWordToolsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/akun': typeof AuthenticatedAkunRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pas-foto': typeof AuthenticatedPasFotoRoute
+  '/pdf-tools': typeof AuthenticatedPdfToolsRoute
+  '/photo-tools': typeof AuthenticatedPhotoToolsRoute
+  '/riwayat': typeof AuthenticatedRiwayatRoute
+  '/word-tools': typeof AuthenticatedWordToolsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -66,22 +106,52 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/akun': typeof AuthenticatedAkunRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/pas-foto': typeof AuthenticatedPasFotoRoute
+  '/_authenticated/pdf-tools': typeof AuthenticatedPdfToolsRoute
+  '/_authenticated/photo-tools': typeof AuthenticatedPhotoToolsRoute
+  '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
+  '/_authenticated/word-tools': typeof AuthenticatedWordToolsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/reset-password' | '/dashboard' | '/pas-foto'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/akun'
+    | '/dashboard'
+    | '/pas-foto'
+    | '/pdf-tools'
+    | '/photo-tools'
+    | '/riwayat'
+    | '/word-tools'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/reset-password' | '/dashboard' | '/pas-foto'
+  to:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/akun'
+    | '/dashboard'
+    | '/pas-foto'
+    | '/pdf-tools'
+    | '/photo-tools'
+    | '/riwayat'
+    | '/word-tools'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/_authenticated/akun'
     | '/_authenticated/dashboard'
     | '/_authenticated/pas-foto'
+    | '/_authenticated/pdf-tools'
+    | '/_authenticated/photo-tools'
+    | '/_authenticated/riwayat'
+    | '/_authenticated/word-tools'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -121,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/akun': {
+      id: '/_authenticated/akun'
+      path: '/akun'
+      fullPath: '/akun'
+      preLoaderRoute: typeof AuthenticatedAkunRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -135,17 +212,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPasFotoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pdf-tools': {
+      id: '/_authenticated/pdf-tools'
+      path: '/pdf-tools'
+      fullPath: '/pdf-tools'
+      preLoaderRoute: typeof AuthenticatedPdfToolsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/photo-tools': {
+      id: '/_authenticated/photo-tools'
+      path: '/photo-tools'
+      fullPath: '/photo-tools'
+      preLoaderRoute: typeof AuthenticatedPhotoToolsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/riwayat': {
+      id: '/_authenticated/riwayat'
+      path: '/riwayat'
+      fullPath: '/riwayat'
+      preLoaderRoute: typeof AuthenticatedRiwayatRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/word-tools': {
+      id: '/_authenticated/word-tools'
+      path: '/word-tools'
+      fullPath: '/word-tools'
+      preLoaderRoute: typeof AuthenticatedWordToolsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAkunRoute: typeof AuthenticatedAkunRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPasFotoRoute: typeof AuthenticatedPasFotoRoute
+  AuthenticatedPdfToolsRoute: typeof AuthenticatedPdfToolsRoute
+  AuthenticatedPhotoToolsRoute: typeof AuthenticatedPhotoToolsRoute
+  AuthenticatedRiwayatRoute: typeof AuthenticatedRiwayatRoute
+  AuthenticatedWordToolsRoute: typeof AuthenticatedWordToolsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAkunRoute: AuthenticatedAkunRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPasFotoRoute: AuthenticatedPasFotoRoute,
+  AuthenticatedPdfToolsRoute: AuthenticatedPdfToolsRoute,
+  AuthenticatedPhotoToolsRoute: AuthenticatedPhotoToolsRoute,
+  AuthenticatedRiwayatRoute: AuthenticatedRiwayatRoute,
+  AuthenticatedWordToolsRoute: AuthenticatedWordToolsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
