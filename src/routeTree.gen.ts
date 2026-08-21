@@ -16,6 +16,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedPasFotoRouteImport } from './routes/_authenticated/pas-foto'
 import { Route as AuthenticatedPdfToolsRouteImport } from './routes/_authenticated/pdf-tools'
+import { Route as AuthenticatedPhotoToolsRouteImport } from './routes/_authenticated/photo-tools'
 import { Route as AuthenticatedWordToolsRouteImport } from './routes/_authenticated/word-tools'
 
 const IndexRoute = IndexRouteImport.update({
@@ -52,6 +53,11 @@ const AuthenticatedPdfToolsRoute = AuthenticatedPdfToolsRouteImport.update({
   path: '/pdf-tools',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPhotoToolsRoute = AuthenticatedPhotoToolsRouteImport.update({
+  id: '/photo-tools',
+  path: '/photo-tools',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedWordToolsRoute = AuthenticatedWordToolsRouteImport.update({
   id: '/word-tools',
   path: '/word-tools',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pas-foto': typeof AuthenticatedPasFotoRoute
   '/pdf-tools': typeof AuthenticatedPdfToolsRoute
+  '/photo-tools': typeof AuthenticatedPhotoToolsRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
 }
 export interface FileRoutesByTo {
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pas-foto': typeof AuthenticatedPasFotoRoute
   '/pdf-tools': typeof AuthenticatedPdfToolsRoute
+  '/photo-tools': typeof AuthenticatedPhotoToolsRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
 }
 export interface FileRoutesById {
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/pas-foto': typeof AuthenticatedPasFotoRoute
   '/_authenticated/pdf-tools': typeof AuthenticatedPdfToolsRoute
+  '/_authenticated/photo-tools': typeof AuthenticatedPhotoToolsRoute
   '/_authenticated/word-tools': typeof AuthenticatedWordToolsRoute
 }
 export interface FileRouteTypes {
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pas-foto'
     | '/pdf-tools'
+    | '/photo-tools'
     | '/word-tools'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pas-foto'
     | '/pdf-tools'
+    | '/photo-tools'
     | '/word-tools'
   id:
     | '__root__'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/pas-foto'
     | '/_authenticated/pdf-tools'
+    | '/_authenticated/photo-tools'
     | '/_authenticated/word-tools'
   fileRoutesById: FileRoutesById
 }
@@ -176,6 +188,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPdfToolsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/photo-tools': {
+      id: '/_authenticated/photo-tools'
+      path: '/photo-tools'
+      fullPath: '/photo-tools'
+      preLoaderRoute: typeof AuthenticatedPhotoToolsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/word-tools': {
       id: '/_authenticated/word-tools'
       path: '/word-tools'
@@ -190,6 +209,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPasFotoRoute: typeof AuthenticatedPasFotoRoute
   AuthenticatedPdfToolsRoute: typeof AuthenticatedPdfToolsRoute
+  AuthenticatedPhotoToolsRoute: typeof AuthenticatedPhotoToolsRoute
   AuthenticatedWordToolsRoute: typeof AuthenticatedWordToolsRoute
 }
 
@@ -197,6 +217,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPasFotoRoute: AuthenticatedPasFotoRoute,
   AuthenticatedPdfToolsRoute: AuthenticatedPdfToolsRoute,
+  AuthenticatedPhotoToolsRoute: AuthenticatedPhotoToolsRoute,
   AuthenticatedWordToolsRoute: AuthenticatedWordToolsRoute,
 }
 
