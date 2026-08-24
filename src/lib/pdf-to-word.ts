@@ -13,7 +13,6 @@ export type PdfToWordOptions = {
 };
 
 const PT_TO_DXA = 20; // 1pt = 20 DXA
-const PT_TO_EMU = 12700;
 
 type Line = {
   text: string;
@@ -181,9 +180,7 @@ export async function pdfToWord(file: File, options: PdfToWordOptions = {}) {
       const textContent = await page.getTextContent();
       lines = itemsToLines(textContent.items as any[], heightPt);
 
-      const scanned = lines.join === undefined || lines.length === 0;
-      const shouldOcr =
-        mode === "ocr" || (mode === "auto" && (scanned || lines.length < 3));
+      const shouldOcr = mode === "ocr" || (mode === "auto" && lines.length < 3);
       if (shouldOcr) {
         onProgress?.({ done: i - 1, total, label: `OCR halaman ${i}/${total}...` });
         const scale = 2;
