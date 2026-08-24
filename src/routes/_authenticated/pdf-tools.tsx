@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/AppShell";
 import { FileDropzone } from "@/components/shared/FileDropzone";
+import { PdfToWordCard } from "@/components/shared/PdfToWordCard";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -123,6 +124,8 @@ function PdfToolsPage() {
         </TabsList>
 
         <TabsContent value="convert" className="mt-4 grid gap-4 lg:grid-cols-2">
+          <PdfToWordCard category="pdf" />
+
           <ToolCard
             title="Gambar / Word ke PDF"
             description="Unggah JPG, PNG, WEBP, atau DOCX untuk dijadikan PDF."
