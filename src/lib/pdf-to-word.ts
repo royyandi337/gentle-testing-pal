@@ -39,10 +39,10 @@ function itemsToLines(items: any[], pageHeight: number): Line[] {
   for (const item of items) {
     const str: string = item.str ?? "";
     if (!str.trim()) continue;
-    const t = item.transform as number[];
+    const t = (item.transform ?? []) as number[];
     const size = Math.abs(t[3] || t[0] || 11);
-    const x = t[4];
-    const y = pageHeight - t[5];
+    const x = t[4] ?? 0;
+    const y = pageHeight - (t[5] ?? 0);
     const font = String(item.fontName ?? "");
     raws.push({
       text: str,
@@ -233,7 +233,7 @@ export async function pdfToWord(file: File, options: PdfToWordOptions = {}) {
           new Paragraph({
             alignment: centered ? AlignmentType.CENTER : AlignmentType.LEFT,
             spacing: { before: Math.round(gap * PT_TO_DXA), line: 240 },
-            indent: centered ? undefined : { left: Math.round(indent * PT_TO_DXA) },
+            ...(centered ? {} : { indent: { left: Math.round(indent * PT_TO_DXA) } }),
             children: [
               new TextRun({
                 text: line.text,
