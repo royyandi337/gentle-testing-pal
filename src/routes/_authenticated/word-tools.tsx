@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/AppShell";
 import { FileDropzone } from "@/components/shared/FileDropzone";
+import { PdfToWordCard } from "@/components/shared/PdfToWordCard";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,16 +101,8 @@ function WordToolsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">PDF ke Word</CardTitle>
-            <CardDescription>
-              Konversi PDF ke Word memerlukan pemrosesan di server dan akan tersedia setelah Edge
-              Function dokumen diaktifkan. Sementara ini gunakan PDF Tools untuk mengekstrak halaman
-              atau gambar.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <PdfToWordCard category="word" />
+
       </div>
     </div>
   );
