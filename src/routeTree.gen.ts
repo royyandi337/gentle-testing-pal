@@ -20,6 +20,7 @@ import { Route as AuthenticatedPdfToolsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPhotoToolsRouteImport } from './routes/_authenticated/photo-tools'
 import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
 import { Route as AuthenticatedWordToolsRouteImport } from './routes/_authenticated/word-tools'
+import { Route as ApiEnhanceImageRouteImport } from './routes/api/enhance-image'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -75,6 +76,11 @@ const AuthenticatedWordToolsRoute = AuthenticatedWordToolsRouteImport.update({
   path: '/word-tools',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiEnhanceImageRoute = ApiEnhanceImageRouteImport.update({
+  id: '/api/enhance-image',
+  path: '/api/enhance-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/photo-tools': typeof AuthenticatedPhotoToolsRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
+  '/api/enhance-image': typeof ApiEnhanceImageRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/photo-tools': typeof AuthenticatedPhotoToolsRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
+  '/api/enhance-image': typeof ApiEnhanceImageRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/_authenticated/photo-tools': typeof AuthenticatedPhotoToolsRoute
   '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
   '/_authenticated/word-tools': typeof AuthenticatedWordToolsRoute
+  '/api/enhance-image': typeof ApiEnhanceImageRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/photo-tools'
     | '/riwayat'
     | '/word-tools'
+    | '/api/enhance-image'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/photo-tools'
     | '/riwayat'
     | '/word-tools'
+    | '/api/enhance-image'
   id:
     | '__root__'
     | '/'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/_authenticated/photo-tools'
     | '/_authenticated/riwayat'
     | '/_authenticated/word-tools'
+    | '/api/enhance-image'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -159,6 +171,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiEnhanceImageRoute: typeof ApiEnhanceImageRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -240,6 +253,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWordToolsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/enhance-image': {
+      id: '/api/enhance-image'
+      path: '/api/enhance-image'
+      fullPath: '/api/enhance-image'
+      preLoaderRoute: typeof ApiEnhanceImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -271,6 +291,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiEnhanceImageRoute: ApiEnhanceImageRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
