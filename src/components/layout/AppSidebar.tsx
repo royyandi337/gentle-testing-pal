@@ -7,6 +7,8 @@ import {
   Images,
   FolderClock,
   Settings,
+  Wand2,
+
   Sparkles,
 } from "lucide-react";
 import {
