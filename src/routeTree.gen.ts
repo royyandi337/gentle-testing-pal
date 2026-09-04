@@ -21,6 +21,7 @@ import { Route as AuthenticatedPhotoToolsRouteImport } from './routes/_authentic
 import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
 import { Route as AuthenticatedWordToolsRouteImport } from './routes/_authenticated/word-tools'
 import { Route as ApiEnhanceImageRouteImport } from './routes/api/enhance-image'
+import { Route as ApiRemoveBackgroundRouteImport } from './routes/api/remove-background'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -81,6 +82,11 @@ const ApiEnhanceImageRoute = ApiEnhanceImageRouteImport.update({
   path: '/api/enhance-image',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRemoveBackgroundRoute = ApiRemoveBackgroundRouteImport.update({
+  id: '/api/remove-background',
+  path: '/api/remove-background',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
   '/api/enhance-image': typeof ApiEnhanceImageRoute
+  '/api/remove-background': typeof ApiRemoveBackgroundRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
   '/api/enhance-image': typeof ApiEnhanceImageRoute
+  '/api/remove-background': typeof ApiRemoveBackgroundRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
   '/_authenticated/word-tools': typeof AuthenticatedWordToolsRoute
   '/api/enhance-image': typeof ApiEnhanceImageRoute
+  '/api/remove-background': typeof ApiRemoveBackgroundRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/riwayat'
     | '/word-tools'
     | '/api/enhance-image'
+    | '/api/remove-background'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/riwayat'
     | '/word-tools'
     | '/api/enhance-image'
+    | '/api/remove-background'
   id:
     | '__root__'
     | '/'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/_authenticated/riwayat'
     | '/_authenticated/word-tools'
     | '/api/enhance-image'
+    | '/api/remove-background'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -172,6 +184,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiEnhanceImageRoute: typeof ApiEnhanceImageRoute
+  ApiRemoveBackgroundRoute: typeof ApiRemoveBackgroundRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -260,6 +273,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiEnhanceImageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/remove-background': {
+      id: '/api/remove-background'
+      path: '/api/remove-background'
+      fullPath: '/api/remove-background'
+      preLoaderRoute: typeof ApiRemoveBackgroundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -292,6 +312,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiEnhanceImageRoute: ApiEnhanceImageRoute,
+  ApiRemoveBackgroundRoute: ApiRemoveBackgroundRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
