@@ -28,6 +28,8 @@ export const NAV_ITEMS = [
   { to: "/pdf-tools", label: "PDF Tools", icon: FileText },
   { to: "/word-tools", label: "Word Tools", icon: FileType2 },
   { to: "/photo-tools", label: "Photo Tools", icon: Images },
+  { to: "/ai-tools", label: "AI Tools", icon: Wand2 },
+
   { to: "/riwayat", label: "Riwayat", icon: FolderClock },
   { to: "/akun", label: "Akun", icon: Settings },
 ] as const;
