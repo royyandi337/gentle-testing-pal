@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedAiToolsRouteImport } from './routes/_authenticated/ai-tools'
 import { Route as AuthenticatedAkunRouteImport } from './routes/_authenticated/akun'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedPasFotoRouteImport } from './routes/_authenticated/pas-foto'
@@ -20,6 +21,8 @@ import { Route as AuthenticatedPdfToolsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPhotoToolsRouteImport } from './routes/_authenticated/photo-tools'
 import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
 import { Route as AuthenticatedWordToolsRouteImport } from './routes/_authenticated/word-tools'
+import { Route as ApiEnhanceImageRouteImport } from './routes/api/enhance-image'
+import { Route as ApiRemoveBackgroundRouteImport } from './routes/api/remove-background'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -39,6 +42,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAiToolsRoute = AuthenticatedAiToolsRouteImport.update({
+  id: '/ai-tools',
+  path: '/ai-tools',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAkunRoute = AuthenticatedAkunRouteImport.update({
   id: '/akun',
@@ -75,11 +83,22 @@ const AuthenticatedWordToolsRoute = AuthenticatedWordToolsRouteImport.update({
   path: '/word-tools',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiEnhanceImageRoute = ApiEnhanceImageRouteImport.update({
+  id: '/api/enhance-image',
+  path: '/api/enhance-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRemoveBackgroundRoute = ApiRemoveBackgroundRouteImport.update({
+  id: '/api/remove-background',
+  path: '/api/remove-background',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/ai-tools': typeof AuthenticatedAiToolsRoute
   '/akun': typeof AuthenticatedAkunRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pas-foto': typeof AuthenticatedPasFotoRoute
@@ -87,11 +106,14 @@ export interface FileRoutesByFullPath {
   '/photo-tools': typeof AuthenticatedPhotoToolsRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
+  '/api/enhance-image': typeof ApiEnhanceImageRoute
+  '/api/remove-background': typeof ApiRemoveBackgroundRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/ai-tools': typeof AuthenticatedAiToolsRoute
   '/akun': typeof AuthenticatedAkunRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pas-foto': typeof AuthenticatedPasFotoRoute
@@ -99,6 +121,8 @@ export interface FileRoutesByTo {
   '/photo-tools': typeof AuthenticatedPhotoToolsRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
+  '/api/enhance-image': typeof ApiEnhanceImageRoute
+  '/api/remove-background': typeof ApiRemoveBackgroundRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -106,6 +130,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/ai-tools': typeof AuthenticatedAiToolsRoute
   '/_authenticated/akun': typeof AuthenticatedAkunRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/pas-foto': typeof AuthenticatedPasFotoRoute
@@ -113,6 +138,8 @@ export interface FileRoutesById {
   '/_authenticated/photo-tools': typeof AuthenticatedPhotoToolsRoute
   '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
   '/_authenticated/word-tools': typeof AuthenticatedWordToolsRoute
+  '/api/enhance-image': typeof ApiEnhanceImageRoute
+  '/api/remove-background': typeof ApiRemoveBackgroundRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -120,6 +147,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/ai-tools'
     | '/akun'
     | '/dashboard'
     | '/pas-foto'
@@ -127,11 +155,14 @@ export interface FileRouteTypes {
     | '/photo-tools'
     | '/riwayat'
     | '/word-tools'
+    | '/api/enhance-image'
+    | '/api/remove-background'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/ai-tools'
     | '/akun'
     | '/dashboard'
     | '/pas-foto'
@@ -139,12 +170,15 @@ export interface FileRouteTypes {
     | '/photo-tools'
     | '/riwayat'
     | '/word-tools'
+    | '/api/enhance-image'
+    | '/api/remove-background'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/_authenticated/ai-tools'
     | '/_authenticated/akun'
     | '/_authenticated/dashboard'
     | '/_authenticated/pas-foto'
@@ -152,6 +186,8 @@ export interface FileRouteTypes {
     | '/_authenticated/photo-tools'
     | '/_authenticated/riwayat'
     | '/_authenticated/word-tools'
+    | '/api/enhance-image'
+    | '/api/remove-background'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -159,6 +195,8 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiEnhanceImageRoute: typeof ApiEnhanceImageRoute
+  ApiRemoveBackgroundRoute: typeof ApiRemoveBackgroundRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -190,6 +228,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/ai-tools': {
+      id: '/_authenticated/ai-tools'
+      path: '/ai-tools'
+      fullPath: '/ai-tools'
+      preLoaderRoute: typeof AuthenticatedAiToolsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/akun': {
       id: '/_authenticated/akun'
@@ -240,10 +285,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWordToolsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/enhance-image': {
+      id: '/api/enhance-image'
+      path: '/api/enhance-image'
+      fullPath: '/api/enhance-image'
+      preLoaderRoute: typeof ApiEnhanceImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/remove-background': {
+      id: '/api/remove-background'
+      path: '/api/remove-background'
+      fullPath: '/api/remove-background'
+      preLoaderRoute: typeof ApiRemoveBackgroundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAiToolsRoute: typeof AuthenticatedAiToolsRoute
   AuthenticatedAkunRoute: typeof AuthenticatedAkunRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPasFotoRoute: typeof AuthenticatedPasFotoRoute
@@ -254,6 +314,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAiToolsRoute: AuthenticatedAiToolsRoute,
   AuthenticatedAkunRoute: AuthenticatedAkunRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPasFotoRoute: AuthenticatedPasFotoRoute,
@@ -271,6 +332,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiEnhanceImageRoute: ApiEnhanceImageRoute,
+  ApiRemoveBackgroundRoute: ApiRemoveBackgroundRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
