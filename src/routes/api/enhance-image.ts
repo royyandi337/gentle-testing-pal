@@ -13,8 +13,7 @@ export const Route = createFileRoute("/api/enhance-image")({
           // When the input is already a transparent cutout, background restoration
           // would invent a fake background — keep it disabled in that case.
           const transparentFlag = String(form.get("transparent") ?? "") === "true";
-          const isPng = dataUrl.startsWith("data:image/png");
-          const backgroundEnhance = !(transparentFlag || isPng);
+          const backgroundEnhance = !transparentFlag;
           const image = await callGradio(SPACE_BASE, "/inference", [
             fileData(dataUrl),
             true, // face_align

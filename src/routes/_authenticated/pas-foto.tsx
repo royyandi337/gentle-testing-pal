@@ -64,7 +64,7 @@ import { saveResult } from "@/lib/history";
 
 const TITLE = "Pas Foto — ROY DIGITAL SOLUTION";
 const DESCRIPTION =
-  "Alur kerja pas foto langkah demi langkah: unggah, hapus background AI, enhance AI, atur ukuran & crop, susun lembar cetak, lalu unduh.";
+  "Alur kerja pas foto langkah demi langkah: unggah, enhance AI, hapus background AI, atur ukuran & crop, susun lembar cetak, lalu unduh.";
 
 export const Route = createFileRoute("/_authenticated/pas-foto")({
   head: () => ({
@@ -102,8 +102,8 @@ const CHECKER =
 
 const STEPS = [
   { id: 1, label: "Upload" },
-  { id: 2, label: "Remove BG" },
-  { id: 3, label: "Enhance" },
+  { id: 2, label: "Enhance" },
+  { id: 3, label: "Remove BG" },
   { id: 4, label: "Ukuran & Crop" },
   { id: 5, label: "Cetak" },
   { id: 6, label: "Download" },
@@ -114,9 +114,14 @@ type AiStatus = "pending" | "applied" | "skipped";
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
-async function callAiEndpoint(path: string, file: File): Promise<string> {
+async function callAiEndpoint(
+  path: string,
+  file: File,
+  extra?: Record<string, string>,
+): Promise<string> {
   const form = new FormData();
   form.append("image", file);
+  for (const [key, value] of Object.entries(extra ?? {})) form.append(key, value);
   const res = await fetch(path, { method: "POST", body: form });
   const json = (await res.json().catch(() => ({}))) as { image?: string; error?: string };
   if (!res.ok || !json.image) {
@@ -292,7 +297,7 @@ function PasFotoPage() {
       setPhase("done");
       setStatusMsg("Background berhasil dihapus.");
       toast.success("Background berhasil dihapus");
-      setStep(3);
+      setStep(4);
     } catch (error) {
       setPhase("error");
       const msg = error instanceof Error ? error.message : "AI Remove Background gagal.";
@@ -309,14 +314,16 @@ function PasFotoPage() {
     setPhase("working");
     setStatusMsg("AI sedang meningkatkan kualitas foto... (bisa 10–30 detik)");
     try {
-      const image = await callAiEndpoint("/api/enhance-image", file);
+      const image = await callAiEndpoint("/api/enhance-image", file, {
+        transparent: removeBgStatus === "applied" ? "true" : "false",
+      });
       const enhanced = await dataUrlToFile(image, "pas-foto-enhanced.png");
       setFile(enhanced);
       setEnhanceStatus("applied");
       setPhase("done");
       setStatusMsg("Foto berhasil ditingkatkan.");
       toast.success("Foto berhasil ditingkatkan");
-      setStep(4);
+      setStep(3);
     } catch (error) {
       setPhase("error");
       const msg = error instanceof Error ? error.message : "AI Enhance gagal.";
@@ -473,15 +480,15 @@ function PasFotoPage() {
 
           {step === 2 ? (
             <AiStepCard
-              stepLabel="2. Hapus Background (AI)"
-              description="Direkomendasikan sebagai langkah pertama agar background bisa diganti warna resmi. Proses AI bisa memakan 10–30 detik."
-              icon={Wand2}
-              actionLabel="Hapus Background dengan AI"
+              stepLabel="2. Enhance Foto (AI)"
+              description="Dijalankan sebelum hapus background karena model enhance bekerja optimal saat background asli masih ada. Proses AI bisa memakan 10–30 detik."
+              icon={Sparkles}
+              actionLabel="Enhance Foto dengan AI"
               busy={aiBusy}
-              status={removeBgStatus}
-              onRun={runRemoveBackground}
+              status={enhanceStatus}
+              onRun={runEnhance}
               onSkip={() => {
-                setRemoveBgStatus("skipped");
+                setEnhanceStatus("skipped");
                 goTo(3);
               }}
               onBack={() => goTo(1)}
@@ -493,15 +500,15 @@ function PasFotoPage() {
 
           {step === 3 ? (
             <AiStepCard
-              stepLabel="3. Enhance Foto (AI)"
-              description="Perjelas dan restorasi wajah agar hasil cetak lebih tajam. Proses AI bisa memakan 10–30 detik."
-              icon={Sparkles}
-              actionLabel="Enhance Foto dengan AI"
+              stepLabel="3. Hapus Background (AI)"
+              description="Setelah foto dipertajam, hapus background agar bisa diganti warna resmi. Proses AI bisa memakan 10–30 detik."
+              icon={Wand2}
+              actionLabel="Hapus Background dengan AI"
               busy={aiBusy}
-              status={enhanceStatus}
-              onRun={runEnhance}
+              status={removeBgStatus}
+              onRun={runRemoveBackground}
               onSkip={() => {
-                setEnhanceStatus("skipped");
+                setRemoveBgStatus("skipped");
                 goTo(4);
               }}
               onBack={() => goTo(2)}
