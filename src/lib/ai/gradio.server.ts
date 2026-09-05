@@ -148,3 +148,50 @@ export async function imageFromForm(form: FormData): Promise<string> {
   }
   return `data:${file.type};base64,${btoa(binary)}`;
 }
+
+export const MAX_PDF_BYTES = 10 * 1024 * 1024;
+
+/** Uploads a file to a Gradio Space and returns its server-side path. */
+export async function uploadToSpace(base: string, file: File): Promise<string> {
+  const form = new FormData();
+  form.append("files", file, file.name);
+  const res = await fetchWithTimeout(
+    `${base}/gradio_api/upload`,
+    { method: "POST", body: form, headers: authHeaders() },
+    POST_TIMEOUT_MS,
+  );
+  if (!res.ok) throw new Error(`Gagal mengunggah berkas ke Space AI (${res.status}).`);
+  const paths = (await res.json()) as string[];
+  if (!paths?.[0]) throw new Error("Space AI tidak mengembalikan lokasi berkas.");
+  return paths[0];
+}
+
+/** Calls a Gradio endpoint and returns the produced file as an ArrayBuffer. */
+export async function callGradioFile(
+  base: string,
+  endpoint: string,
+  payload: unknown[],
+  attempts = 3,
+): Promise<{ bytes: ArrayBuffer; mime: string }> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const url = await callOnce(base, endpoint, payload);
+      const res = await fetchWithTimeout(url, { headers: authHeaders() }, DOWNLOAD_TIMEOUT_MS);
+      if (!res.ok) throw new Error(`Gagal mengunduh hasil (${res.status}).`);
+      return {
+        bytes: await res.arrayBuffer(),
+        mime:
+          res.headers.get("content-type")?.split(";")[0] ||
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      };
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) await new Promise((r) => setTimeout(r, attempt * 4000));
+    }
+  }
+  if (lastError instanceof Error && lastError.name === "AbortError") {
+    throw new Error("Permintaan ke Space AI timeout. Space mungkin sedang sibuk, coba lagi.");
+  }
+  throw lastError instanceof Error ? lastError : new Error("Konversi di Space AI gagal.");
+}
