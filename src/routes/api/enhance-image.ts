@@ -6,13 +6,19 @@ export const Route = createFileRoute("/api/enhance-image")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { callGradio, fileData, readImageUpload } = await import("@/lib/ai/gradio.server");
+        const { callGradio, fileData, imageFromForm } = await import("@/lib/ai/gradio.server");
         try {
-          const dataUrl = await readImageUpload(request);
+          const form = await request.formData();
+          const dataUrl = await imageFromForm(form);
+          // When the input is already a transparent cutout, background restoration
+          // would invent a fake background — keep it disabled in that case.
+          const transparentFlag = String(form.get("transparent") ?? "") === "true";
+          const isPng = dataUrl.startsWith("data:image/png");
+          const backgroundEnhance = !(transparentFlag || isPng);
           const image = await callGradio(SPACE_BASE, "/inference", [
             fileData(dataUrl),
             true, // face_align
-            true, // background_enhance
+            backgroundEnhance, // background_enhance
             true, // face_upsample
             2, // upscale
             0.5, // codeformer_fidelity
