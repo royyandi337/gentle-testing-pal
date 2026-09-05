@@ -130,7 +130,10 @@ export async function callGradio(
 
 /** Reads and validates the uploaded image from a multipart request. */
 export async function readImageUpload(request: Request): Promise<string> {
-  const form = await request.formData();
+  return imageFromForm(await request.formData());
+}
+
+export async function imageFromForm(form: FormData): Promise<string> {
   const file = form.get("image");
   if (!(file instanceof File)) throw new Error("File gambar tidak ditemukan pada permintaan.");
   if (file.size > MAX_UPLOAD_BYTES) throw new Error("Ukuran file melebihi 10MB.");
