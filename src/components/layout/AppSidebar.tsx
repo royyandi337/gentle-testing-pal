@@ -64,9 +64,6 @@ export const NAV_GROUPS = [
   },
 ] as const;
 
-export const NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items).concat([
-  { to: "/akun", label: "Akun", icon: Settings },
-] as never);
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
