@@ -297,7 +297,7 @@ function PasFotoPage() {
       setPhase("done");
       setStatusMsg("Background berhasil dihapus.");
       toast.success("Background berhasil dihapus");
-      setStep(4);
+      setStep(3);
     } catch (error) {
       setPhase("error");
       const msg = error instanceof Error ? error.message : "AI Remove Background gagal.";
