@@ -323,7 +323,7 @@ function PasFotoPage() {
       setPhase("done");
       setStatusMsg("Foto berhasil ditingkatkan.");
       toast.success("Foto berhasil ditingkatkan");
-      setStep(3);
+      setStep(5);
     } catch (error) {
       setPhase("error");
       const msg = error instanceof Error ? error.message : "AI Enhance gagal.";
