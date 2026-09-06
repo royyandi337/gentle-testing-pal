@@ -18,7 +18,9 @@ import { Route as AuthenticatedAkunRouteImport } from './routes/_authenticated/a
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedPasFotoRouteImport } from './routes/_authenticated/pas-foto'
 import { Route as AuthenticatedPdfToolsRouteImport } from './routes/_authenticated/pdf-tools'
+import { Route as AuthenticatedPengaturanWebsiteRouteImport } from './routes/_authenticated/pengaturan-website'
 import { Route as AuthenticatedPhotoToolsRouteImport } from './routes/_authenticated/photo-tools'
+import { Route as AuthenticatedQrCodeRouteImport } from './routes/_authenticated/qr-code'
 import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
 import { Route as AuthenticatedWordToolsRouteImport } from './routes/_authenticated/word-tools'
 import { Route as ApiEnhanceImageRouteImport } from './routes/api/enhance-image'
@@ -68,9 +70,20 @@ const AuthenticatedPdfToolsRoute = AuthenticatedPdfToolsRouteImport.update({
   path: '/pdf-tools',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPengaturanWebsiteRoute =
+  AuthenticatedPengaturanWebsiteRouteImport.update({
+    id: '/pengaturan-website',
+    path: '/pengaturan-website',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPhotoToolsRoute = AuthenticatedPhotoToolsRouteImport.update({
   id: '/photo-tools',
   path: '/photo-tools',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedQrCodeRoute = AuthenticatedQrCodeRouteImport.update({
+  id: '/qr-code',
+  path: '/qr-code',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRiwayatRoute = AuthenticatedRiwayatRouteImport.update({
@@ -103,7 +116,9 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pas-foto': typeof AuthenticatedPasFotoRoute
   '/pdf-tools': typeof AuthenticatedPdfToolsRoute
+  '/pengaturan-website': typeof AuthenticatedPengaturanWebsiteRoute
   '/photo-tools': typeof AuthenticatedPhotoToolsRoute
+  '/qr-code': typeof AuthenticatedQrCodeRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
   '/api/enhance-image': typeof ApiEnhanceImageRoute
@@ -118,7 +133,9 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pas-foto': typeof AuthenticatedPasFotoRoute
   '/pdf-tools': typeof AuthenticatedPdfToolsRoute
+  '/pengaturan-website': typeof AuthenticatedPengaturanWebsiteRoute
   '/photo-tools': typeof AuthenticatedPhotoToolsRoute
+  '/qr-code': typeof AuthenticatedQrCodeRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
   '/api/enhance-image': typeof ApiEnhanceImageRoute
@@ -135,7 +152,9 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/pas-foto': typeof AuthenticatedPasFotoRoute
   '/_authenticated/pdf-tools': typeof AuthenticatedPdfToolsRoute
+  '/_authenticated/pengaturan-website': typeof AuthenticatedPengaturanWebsiteRoute
   '/_authenticated/photo-tools': typeof AuthenticatedPhotoToolsRoute
+  '/_authenticated/qr-code': typeof AuthenticatedQrCodeRoute
   '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
   '/_authenticated/word-tools': typeof AuthenticatedWordToolsRoute
   '/api/enhance-image': typeof ApiEnhanceImageRoute
@@ -152,7 +171,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pas-foto'
     | '/pdf-tools'
+    | '/pengaturan-website'
     | '/photo-tools'
+    | '/qr-code'
     | '/riwayat'
     | '/word-tools'
     | '/api/enhance-image'
@@ -167,7 +188,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pas-foto'
     | '/pdf-tools'
+    | '/pengaturan-website'
     | '/photo-tools'
+    | '/qr-code'
     | '/riwayat'
     | '/word-tools'
     | '/api/enhance-image'
@@ -183,7 +206,9 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/pas-foto'
     | '/_authenticated/pdf-tools'
+    | '/_authenticated/pengaturan-website'
     | '/_authenticated/photo-tools'
+    | '/_authenticated/qr-code'
     | '/_authenticated/riwayat'
     | '/_authenticated/word-tools'
     | '/api/enhance-image'
@@ -264,11 +289,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPdfToolsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pengaturan-website': {
+      id: '/_authenticated/pengaturan-website'
+      path: '/pengaturan-website'
+      fullPath: '/pengaturan-website'
+      preLoaderRoute: typeof AuthenticatedPengaturanWebsiteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/photo-tools': {
       id: '/_authenticated/photo-tools'
       path: '/photo-tools'
       fullPath: '/photo-tools'
       preLoaderRoute: typeof AuthenticatedPhotoToolsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/qr-code': {
+      id: '/_authenticated/qr-code'
+      path: '/qr-code'
+      fullPath: '/qr-code'
+      preLoaderRoute: typeof AuthenticatedQrCodeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/riwayat': {
@@ -308,7 +347,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPasFotoRoute: typeof AuthenticatedPasFotoRoute
   AuthenticatedPdfToolsRoute: typeof AuthenticatedPdfToolsRoute
+  AuthenticatedPengaturanWebsiteRoute: typeof AuthenticatedPengaturanWebsiteRoute
   AuthenticatedPhotoToolsRoute: typeof AuthenticatedPhotoToolsRoute
+  AuthenticatedQrCodeRoute: typeof AuthenticatedQrCodeRoute
   AuthenticatedRiwayatRoute: typeof AuthenticatedRiwayatRoute
   AuthenticatedWordToolsRoute: typeof AuthenticatedWordToolsRoute
 }
@@ -319,7 +360,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPasFotoRoute: AuthenticatedPasFotoRoute,
   AuthenticatedPdfToolsRoute: AuthenticatedPdfToolsRoute,
+  AuthenticatedPengaturanWebsiteRoute: AuthenticatedPengaturanWebsiteRoute,
   AuthenticatedPhotoToolsRoute: AuthenticatedPhotoToolsRoute,
+  AuthenticatedQrCodeRoute: AuthenticatedQrCodeRoute,
   AuthenticatedRiwayatRoute: AuthenticatedRiwayatRoute,
   AuthenticatedWordToolsRoute: AuthenticatedWordToolsRoute,
 }

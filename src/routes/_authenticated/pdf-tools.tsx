@@ -19,8 +19,10 @@ import {
   parsePageRanges,
   pdfInfo,
   pdfToImages,
+  protectPdf,
   rotatePages,
   splitPdf,
+  unlockPdf,
   watermarkPdf,
 } from "@/lib/pdf";
 import { saveResult, type HistoryCategory } from "@/lib/history";
@@ -48,10 +50,12 @@ export const Route = createFileRoute("/_authenticated/pdf-tools")({
 function useRunner(category: HistoryCategory) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | undefined>(undefined);
+  const [progress, setProgress] = useState<number | undefined>(undefined);
 
   async function run(tool: string, fn: () => Promise<{ blob: Blob; fileName: string }[]>) {
     setPhase("working");
     setMessage("Memproses berkas...");
+    setProgress(undefined);
     try {
       const results = await fn();
       for (const result of results) {
@@ -67,10 +71,12 @@ function useRunner(category: HistoryCategory) {
     } catch (error) {
       setPhase("error");
       setMessage(error instanceof Error ? error.message : "Terjadi kesalahan.");
+    } finally {
+      setProgress(undefined);
     }
   }
 
-  return { phase, message, run };
+  return { phase, message, progress, run, setProgress, setMessage };
 }
 
 function ToolCard({
@@ -94,7 +100,7 @@ function ToolCard({
 }
 
 function PdfToolsPage() {
-  const { phase, message, run } = useRunner("pdf");
+  const { phase, message, progress, run, setProgress, setMessage } = useRunner("pdf");
 
   const [toPdfFiles, setToPdfFiles] = useState<File[]>([]);
   const [fromPdfFile, setFromPdfFile] = useState<File[]>([]);
@@ -104,6 +110,10 @@ function PdfToolsPage() {
   const [splitAt, setSplitAt] = useState(1);
   const [angle, setAngle] = useState(90);
   const [watermark, setWatermark] = useState("ROY DIGITAL");
+  const [protectFile, setProtectFile] = useState<File[]>([]);
+  const [pdfPassword, setPdfPassword] = useState("");
+  const [unlockPassword, setUnlockPassword] = useState("");
+  const [secureTab, setSecureTab] = useState("protect");
 
   const baseName = (file: File) => file.name.replace(/\.[^.]+$/, "");
 
@@ -114,7 +124,7 @@ function PdfToolsPage() {
         description="Semua kebutuhan dokumen PDF dalam satu tempat — konversi, kelola, dan amankan."
       />
 
-      <ProcessState phase={phase} message={message} />
+      <ProcessState phase={phase} message={message} progress={progress} />
 
       <Tabs defaultValue="convert" className="mt-6">
         <TabsList>
@@ -178,7 +188,12 @@ function PdfToolsPage() {
                   onClick={() =>
                     run("pdf-to-image", async () => {
                       const file = fromPdfFile[0]!;
-                      const blobs = await pdfToImages(file, type);
+                      setProgress(0);
+                      setMessage("Merender halaman PDF...");
+                      const blobs = await pdfToImages(file, type, 2, (done, total) => {
+                        setProgress(Math.round((done / total) * 100));
+                        setMessage(`Merender halaman ${done}/${total}...`);
+                      });
                       const ext = type === "image/jpeg" ? "jpg" : "png";
                       return blobs.map((blob, i) => ({
                         blob,
@@ -362,15 +377,81 @@ function PdfToolsPage() {
             </Button>
           </ToolCard>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Proteksi & Buka Password</CardTitle>
-              <CardDescription>
-                Enkripsi dan pembukaan password PDF akan tersedia setelah integrasi Edge Function
-                pemroses dokumen diaktifkan.
-              </CardDescription>
-            </CardHeader>
-          </Card>
+          <ToolCard
+            title="Proteksi PDF dengan Password"
+            description="Tambahkan password untuk membuka PDF. Penerima harus tahu passwordnya untuk membaca file."
+          >
+            <FileDropzone
+              accept="application/pdf"
+              files={protectFile}
+              onFiles={setProtectFile}
+              hint="Satu berkas PDF"
+            />
+            <div className="space-y-1.5">
+              <Label htmlFor="pdf-password">Password</Label>
+              <Input
+                id="pdf-password"
+                type="password"
+                value={pdfPassword}
+                onChange={(e) => setPdfPassword(e.target.value)}
+                placeholder="Masukkan password untuk PDF"
+              />
+            </div>
+            <Button
+              disabled={!protectFile.length || !pdfPassword || phase === "working"}
+              onClick={() =>
+                run("protect-pdf", async () => {
+                  const file = protectFile[0]!;
+                  return [
+                    {
+                      blob: await protectPdf(file, pdfPassword),
+                      fileName: `${baseName(file)}-terproteksi.pdf`,
+                    },
+                  ];
+                })
+              }
+            >
+              Proteksi PDF
+            </Button>
+          </ToolCard>
+
+          <ToolCard
+            title="Buka Password PDF"
+            description="Hapus password dari PDF yang terkunci. Masukkan password yang benar untuk membukanya."
+          >
+            <FileDropzone
+              accept="application/pdf"
+              files={protectFile}
+              onFiles={setProtectFile}
+              hint="Satu berkas PDF terkunci"
+            />
+            <div className="space-y-1.5">
+              <Label htmlFor="unlock-password">Password PDF</Label>
+              <Input
+                id="unlock-password"
+                type="password"
+                value={unlockPassword}
+                onChange={(e) => setUnlockPassword(e.target.value)}
+                placeholder="Masukkan password PDF"
+              />
+            </div>
+            <Button
+              disabled={!protectFile.length || !unlockPassword || phase === "working"}
+              onClick={() =>
+                run("unlock-pdf", async () => {
+                  const file = protectFile[0]!;
+                  return [
+                    {
+                      blob: await unlockPdf(file, unlockPassword),
+                      fileName: `${baseName(file)}-terbuka.pdf`,
+                    },
+                  ];
+                })
+              }
+            >
+              Buka Password
+            </Button>
+          </ToolCard>
         </TabsContent>
       </Tabs>
     </div>

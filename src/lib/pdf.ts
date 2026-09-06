@@ -125,6 +125,27 @@ export async function watermarkPdf(file: File, text: string, opacity = 0.25) {
   return toBlob(await doc.save());
 }
 
+/** Encrypts a PDF with a user password (required to open) and optional owner password. */
+export async function protectPdf(file: File, userPassword: string, ownerPassword?: string) {
+  const doc = await readPdf(file);
+  const bytes = await doc.save({
+    userPassword,
+    ownerPassword: ownerPassword || userPassword,
+  });
+  return toBlob(bytes);
+}
+
+/** Removes encryption from a PDF by re-saving without password. Requires the correct password to load. */
+export async function unlockPdf(file: File, password: string) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const doc = await PDFDocument.load(bytes, {
+    ignoreEncryption: true,
+    password,
+  });
+  const saved = await doc.save();
+  return toBlob(saved);
+}
+
 /** Object-stream re-save; shrinks most PDFs without touching page content. */
 export async function compressPdf(file: File) {
   const doc = await readPdf(file);
@@ -132,11 +153,39 @@ export async function compressPdf(file: File) {
   return toBlob(bytes);
 }
 
+async function fileToJpgBytes(file: File): Promise<{ bytes: Uint8Array; isPng: boolean }> {
+  const isPng = file.type.includes("png");
+  if (!file.type.includes("webp")) {
+    return { bytes: new Uint8Array(await file.arrayBuffer()), isPng };
+  }
+  // pdf-lib cannot embed WEBP — rasterize to PNG via canvas first.
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Gagal membaca gambar WEBP."));
+    reader.readAsDataURL(file);
+  });
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("Gagal memuat gambar WEBP."));
+    el.src = dataUrl;
+  });
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(img, 0, 0);
+  const blob = await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Gagal konversi WEBP."))), "image/png"),
+  );
+  return { bytes: new Uint8Array(await blob.arrayBuffer()), isPng: true };
+}
+
 export async function imagesToPdf(files: File[], fit: "a4" | "auto" = "a4") {
   const out = await PDFDocument.create();
   for (const file of files) {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const isPng = file.type.includes("png");
+    const { bytes, isPng } = await fileToJpgBytes(file);
     const image = isPng ? await out.embedPng(bytes) : await out.embedJpg(bytes);
     if (fit === "auto") {
       const page = out.addPage([image.width, image.height]);
