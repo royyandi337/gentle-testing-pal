@@ -478,10 +478,10 @@ function PasFotoPage() {
             </Card>
           ) : null}
 
-          {step === 2 ? (
+          {step === 4 ? (
             <AiStepCard
-              stepLabel="2. Enhance Foto (AI)"
-              description="Dijalankan sebelum hapus background karena model enhance bekerja optimal saat background asli masih ada. Proses AI bisa memakan 10–30 detik."
+              stepLabel="4. Enhance Foto (AI)"
+              description="Dijalankan setelah background diganti warna solid agar AI tidak mengarang background baru. Proses AI bisa memakan 10–30 detik."
               icon={Sparkles}
               actionLabel="Enhance Foto dengan AI"
               busy={aiBusy}
@@ -489,19 +489,19 @@ function PasFotoPage() {
               onRun={runEnhance}
               onSkip={() => {
                 setEnhanceStatus("skipped");
-                goTo(3);
+                goTo(5);
               }}
-              onBack={() => goTo(1)}
+              onBack={() => goTo(3)}
               phase={phase}
               statusMsg={statusMsg}
               file={file}
             />
           ) : null}
 
-          {step === 3 ? (
+          {step === 2 ? (
             <AiStepCard
-              stepLabel="3. Hapus Background (AI)"
-              description="Setelah foto dipertajam, hapus background agar bisa diganti warna resmi. Proses AI bisa memakan 10–30 detik."
+              stepLabel="2. Hapus Background (AI)"
+              description="Langkah pertama yang disarankan: hapus background asli agar bisa diganti warna resmi. Proses AI bisa memakan 10–30 detik."
               icon={Wand2}
               actionLabel="Hapus Background dengan AI"
               busy={aiBusy}
@@ -509,9 +509,9 @@ function PasFotoPage() {
               onRun={runRemoveBackground}
               onSkip={() => {
                 setRemoveBgStatus("skipped");
-                goTo(4);
+                goTo(3);
               }}
-              onBack={() => goTo(2)}
+              onBack={() => goTo(1)}
               phase={phase}
               statusMsg={statusMsg}
               file={file}
