@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fileToDataUrl } from "@/lib/image";
 import { saveResult } from "@/lib/history";
+import { isCreditError, CreditExhaustedAlert } from "@/components/shared/CreditExhaustedAlert";
 
 export const Route = createFileRoute("/_authenticated/ai-tools")({
   head: () => ({
@@ -147,7 +148,11 @@ function AiToolCard({ kind }: { kind: ToolKind }) {
         </CardContent>
       </Card>
 
-      <ProcessState phase={phase} message={message} />
+      {phase === "error" && isCreditError(message) ? (
+        <CreditExhaustedAlert />
+      ) : (
+        <ProcessState phase={phase} message={message} />
+      )}
 
       {before ? (
         <div className="grid gap-4 md:grid-cols-2">

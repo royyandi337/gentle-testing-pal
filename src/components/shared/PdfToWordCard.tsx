@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { downloadBlob } from "@/lib/image";
 import { saveResult, type HistoryCategory } from "@/lib/history";
+import { isCreditError, CreditExhaustedAlert } from "@/components/shared/CreditExhaustedAlert";
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
@@ -92,7 +93,11 @@ export function PdfToWordCard({ category = "word" }: { category?: HistoryCategor
           {phase === "working" ? "Mengonversi..." : "Konversi ke Word"}
         </Button>
 
-        <ProcessState phase={phase} message={message} />
+        {phase === "error" && isCreditError(message) ? (
+          <CreditExhaustedAlert />
+        ) : (
+          <ProcessState phase={phase} message={message} />
+        )}
       </CardContent>
     </Card>
   );
