@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/AppShell";
 import { FileDropzone } from "@/components/shared/FileDropzone";
+import { LabelPrintCard } from "@/components/shared/LabelPrintCard";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

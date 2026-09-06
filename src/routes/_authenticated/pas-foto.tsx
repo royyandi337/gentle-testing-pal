@@ -102,9 +102,9 @@ const CHECKER =
 
 const STEPS = [
   { id: 1, label: "Upload" },
-  { id: 2, label: "Enhance" },
-  { id: 3, label: "Remove BG" },
-  { id: 4, label: "Ukuran & Crop" },
+  { id: 2, label: "Remove BG" },
+  { id: 3, label: "Ukuran & Crop" },
+  { id: 4, label: "Enhance" },
   { id: 5, label: "Cetak" },
   { id: 6, label: "Download" },
 ] as const;
@@ -297,7 +297,7 @@ function PasFotoPage() {
       setPhase("done");
       setStatusMsg("Background berhasil dihapus.");
       toast.success("Background berhasil dihapus");
-      setStep(4);
+      setStep(3);
     } catch (error) {
       setPhase("error");
       const msg = error instanceof Error ? error.message : "AI Remove Background gagal.";
@@ -323,7 +323,7 @@ function PasFotoPage() {
       setPhase("done");
       setStatusMsg("Foto berhasil ditingkatkan.");
       toast.success("Foto berhasil ditingkatkan");
-      setStep(3);
+      setStep(5);
     } catch (error) {
       setPhase("error");
       const msg = error instanceof Error ? error.message : "AI Enhance gagal.";
@@ -478,10 +478,10 @@ function PasFotoPage() {
             </Card>
           ) : null}
 
-          {step === 2 ? (
+          {step === 4 ? (
             <AiStepCard
-              stepLabel="2. Enhance Foto (AI)"
-              description="Dijalankan sebelum hapus background karena model enhance bekerja optimal saat background asli masih ada. Proses AI bisa memakan 10–30 detik."
+              stepLabel="4. Enhance Foto (AI)"
+              description="Dijalankan setelah background diganti warna solid agar AI tidak mengarang background baru. Proses AI bisa memakan 10–30 detik."
               icon={Sparkles}
               actionLabel="Enhance Foto dengan AI"
               busy={aiBusy}
@@ -489,6 +489,26 @@ function PasFotoPage() {
               onRun={runEnhance}
               onSkip={() => {
                 setEnhanceStatus("skipped");
+                goTo(5);
+              }}
+              onBack={() => goTo(3)}
+              phase={phase}
+              statusMsg={statusMsg}
+              file={file}
+            />
+          ) : null}
+
+          {step === 2 ? (
+            <AiStepCard
+              stepLabel="2. Hapus Background (AI)"
+              description="Langkah pertama yang disarankan: hapus background asli agar bisa diganti warna resmi. Proses AI bisa memakan 10–30 detik."
+              icon={Wand2}
+              actionLabel="Hapus Background dengan AI"
+              busy={aiBusy}
+              status={removeBgStatus}
+              onRun={runRemoveBackground}
+              onSkip={() => {
+                setRemoveBgStatus("skipped");
                 goTo(3);
               }}
               onBack={() => goTo(1)}
@@ -499,34 +519,14 @@ function PasFotoPage() {
           ) : null}
 
           {step === 3 ? (
-            <AiStepCard
-              stepLabel="3. Hapus Background (AI)"
-              description="Setelah foto dipertajam, hapus background agar bisa diganti warna resmi. Proses AI bisa memakan 10–30 detik."
-              icon={Wand2}
-              actionLabel="Hapus Background dengan AI"
-              busy={aiBusy}
-              status={removeBgStatus}
-              onRun={runRemoveBackground}
-              onSkip={() => {
-                setRemoveBgStatus("skipped");
-                goTo(4);
-              }}
-              onBack={() => goTo(2)}
-              phase={phase}
-              statusMsg={statusMsg}
-              file={file}
-            />
-          ) : null}
-
-          {step === 4 ? (
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]">
               {/* Preview column */}
               <div className="space-y-4">
                 <Card className="border shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-base">4. Ukuran, Posisi &amp; Background</CardTitle>
+                    <CardTitle className="text-base">3. Ukuran, Posisi &amp; Background</CardTitle>
                     <CardDescription>
-                      Atur hasil akhir pas foto sebelum menyusun lembar cetak.
+                      Ganti warna background dan atur ukuran/crop sebelum langkah enhance.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -568,9 +568,9 @@ function PasFotoPage() {
                     />
 
                     <StepNav
-                      onBack={() => goTo(3)}
-                      onNext={() => goTo(5)}
-                      nextLabel="Lanjut ke Cetak"
+                      onBack={() => goTo(2)}
+                      onNext={() => goTo(4)}
+                      nextLabel="Lanjut ke Enhance"
                     />
                     <ProcessState phase={phase} message={statusMsg} />
                   </CardContent>

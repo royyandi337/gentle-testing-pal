@@ -165,6 +165,33 @@ export type Database = {
         }
         Relationships: []
       }
+      site_settings: {
+        Row: {
+          id: boolean
+          site_address: string
+          site_name: string
+          site_tagline: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          site_address?: string
+          site_name?: string
+          site_tagline?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          site_address?: string
+          site_name?: string
+          site_tagline?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       uploaded_files: {
         Row: {
           created_at: string
@@ -232,7 +259,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_all_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          last_sign_in_at: string
+          role: string
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       ai_job_status: "queued" | "processing" | "completed" | "failed"

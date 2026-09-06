@@ -6,10 +6,13 @@ export const Route = createFileRoute("/api/remove-background")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { callGradio, fileData, readImageUpload } = await import("@/lib/ai/gradio.server");
+        const { callGradio, uploadImagePayload, readImageUpload } = await import(
+          "@/lib/ai/gradio.server"
+        );
         try {
-          const dataUrl = await readImageUpload(request);
-          const image = await callGradio(SPACE_BASE, "/png", [fileData(dataUrl)]);
+          const file = await readImageUpload(request);
+          const payload = await uploadImagePayload(SPACE_BASE, file);
+          const image = await callGradio(SPACE_BASE, "/png", [payload]);
           return Response.json({ image });
         } catch (error) {
           return Response.json(
