@@ -23,8 +23,12 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export function fileData(dataUrl: string) {
-  return { path: null, url: dataUrl, meta: { _type: "gradio.FileData" } };
+/**
+ * Payload for a file that has already been uploaded to the Space.
+ * Raw data URLs must never be inlined here — large images break the call.
+ */
+export function fileData(uploadedPath: string) {
+  return { path: uploadedPath, meta: { _type: "gradio.FileData" } };
 }
 
 function findUrl(value: unknown): string | undefined {
