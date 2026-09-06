@@ -102,9 +102,9 @@ const CHECKER =
 
 const STEPS = [
   { id: 1, label: "Upload" },
-  { id: 2, label: "Enhance" },
-  { id: 3, label: "Remove BG" },
-  { id: 4, label: "Ukuran & Crop" },
+  { id: 2, label: "Remove BG" },
+  { id: 3, label: "Ukuran & Crop" },
+  { id: 4, label: "Enhance" },
   { id: 5, label: "Cetak" },
   { id: 6, label: "Download" },
 ] as const;
