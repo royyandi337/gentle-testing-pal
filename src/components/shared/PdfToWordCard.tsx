@@ -3,82 +3,77 @@ import { FileDropzone } from "@/components/shared/FileDropzone";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 import { downloadBlob } from "@/lib/image";
-import { pdfToWord, type PdfToWordMode } from "@/lib/pdf-to-word";
 import { saveResult, type HistoryCategory } from "@/lib/history";
 
-const MODES: { value: PdfToWordMode; label: string; hint: string }[] = [
-  {
-    value: "auto",
-    label: "Otomatis (disarankan)",
-    hint: "Pakai teks asli PDF; halaman hasil scan otomatis dibaca dengan OCR.",
-  },
-  { value: "text", label: "Teks PDF saja", hint: "Cepat, untuk PDF digital yang sudah berteks." },
-  { value: "ocr", label: "OCR semua halaman", hint: "Untuk PDF hasil scan/foto. Lebih lambat." },
-  {
-    value: "image",
-    label: "Salin tampilan (gambar)",
-    hint: "Tampilan Word 100% sama seperti PDF, namun teks tidak bisa diedit.",
-  },
-];
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
+
+type EdgeResult = { filename?: string; mime?: string; base64?: string; error?: string };
+
+function base64ToBlob(base64: string, mime: string): Blob {
+  const clean = base64.includes(",") ? base64.slice(base64.indexOf(",") + 1) : base64;
+  const binary = atob(clean);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes.buffer], { type: mime });
+}
 
 export function PdfToWordCard({ category = "word" }: { category?: HistoryCategory }) {
   const [files, setFiles] = useState<File[]>([]);
-  const [mode, setMode] = useState<PdfToWordMode>("auto");
-  const [lang, setLang] = useState("ind+eng");
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | undefined>(undefined);
 
   async function convert() {
     const file = files[0];
     if (!file) return;
+    if (file.size > MAX_PDF_BYTES) {
+      setPhase("error");
+      setMessage("Ukuran PDF melebihi 20MB.");
+      return;
+    }
     setPhase("working");
-    setMessage("Menyiapkan konversi...");
+    setMessage("Mengunggah PDF dan menjalankan konversi... Proses bisa 10–90 detik.");
     try {
-      const result = await pdfToWord(file, {
-        mode,
-        ocrLang: lang,
-        onProgress: ({ label }) => setMessage(label),
+      const form = new FormData();
+      form.append("file", file, file.name);
+      const { data, error } = await supabase.functions.invoke<EdgeResult>("pdf-to-word", {
+        body: form,
       });
-      const fileName = `${file.name.replace(/\.[^.]+$/, "")}.docx`;
-      downloadBlob(result.blob, fileName);
+      if (error) throw new Error(error.message);
+      if (!data?.base64) throw new Error(data?.error ?? "Server konversi tidak mengembalikan hasil.");
+
+      const mime =
+        data.mime ||
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      const blob = base64ToBlob(data.base64, mime);
+      const fileName = data.filename || `${file.name.replace(/\.[^.]+$/, "")}.docx`;
+      downloadBlob(blob, fileName);
       try {
-        await saveResult({
-          category,
-          tool: result.usedOcr ? "pdf-to-word-ocr" : "pdf-to-word",
-          fileName,
-          blob: result.blob,
-        });
+        await saveResult({ category, tool: "pdf-to-word-ocr", fileName, blob });
       } catch {
         // Riwayat opsional.
       }
       setPhase("done");
-      setMessage(
-        `${fileName} siap diunduh (${result.pages} halaman${result.usedOcr ? ", OCR aktif" : ""}).`,
-      );
+      setMessage(`${fileName} siap diunduh.`);
     } catch (error) {
       setPhase("error");
-      setMessage(error instanceof Error ? error.message : "Konversi PDF ke Word gagal.");
+      const raw = error instanceof Error ? error.message : "";
+      setMessage(
+        raw.toLowerCase().includes("timeout") || raw.toLowerCase().includes("fetch")
+          ? "Server konversi belum siap atau permintaan timeout. Tunggu sebentar lalu coba lagi."
+          : raw || "Konversi PDF ke Word gagal. Coba lagi.",
+      );
     }
   }
-
-  const active = MODES.find((m) => m.value === mode);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">PDF ke Word (dengan OCR)</CardTitle>
         <CardDescription>
-          Ubah PDF menjadi .docx. Ukuran halaman, posisi, dan ukuran teks mengikuti PDF aslinya. PDF
-          hasil scan dibaca otomatis memakai OCR.
+          Ubah PDF menjadi .docx. Tata letak mengikuti PDF aslinya dan PDF hasil scan dibaca
+          otomatis memakai OCR di server.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -86,44 +81,15 @@ export function PdfToWordCard({ category = "word" }: { category?: HistoryCategor
           accept="application/pdf"
           files={files}
           onFiles={setFiles}
-          hint="Satu berkas PDF"
+          hint="Satu berkas PDF — maks 20MB"
         />
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>Metode konversi</Label>
-            <Select value={mode} onValueChange={(v) => setMode(v as PdfToWordMode)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {MODES.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Bahasa OCR</Label>
-            <Select value={lang} onValueChange={setLang} disabled={mode === "text" || mode === "image"}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ind+eng">Indonesia + Inggris</SelectItem>
-                <SelectItem value="ind">Indonesia</SelectItem>
-                <SelectItem value="eng">Inggris</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {active ? <p className="text-xs text-muted-foreground">{active.hint}</p> : null}
+        <p className="text-xs text-muted-foreground">
+          Konversi berjalan di server. Permintaan pertama bisa memakan 10–90 detik.
+        </p>
 
         <Button disabled={!files.length || phase === "working"} onClick={convert}>
-          Konversi ke Word
+          {phase === "working" ? "Mengonversi..." : "Konversi ke Word"}
         </Button>
 
         <ProcessState phase={phase} message={message} />
