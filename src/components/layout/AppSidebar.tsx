@@ -75,6 +75,7 @@ export function AppSidebar() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const settings = useSiteSettings();
+  const { tier, remaining } = useCredits();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const email = user?.email ?? "";
