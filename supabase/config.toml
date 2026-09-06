@@ -1,1 +1,4 @@
 project_id = "tgzamkzwjrvmkceglzza"
+
+[functions.pdf-to-word]
+verify_jwt = true

@@ -6,25 +6,41 @@ export const Route = createFileRoute("/api/enhance-image")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const { getUserFromRequest, checkCredit, deductCredit } = await import(
+          "@/lib/ai/credit-guard.server"
+        );
         const { callGradio, uploadImagePayload, imageFromForm } = await import(
           "@/lib/ai/gradio.server"
         );
+
         try {
+          const auth = await getUserFromRequest(request);
+          if (!auth) {
+            return Response.json({ error: "Unauthorized" }, { status: 401 });
+          }
+
+          const credit = await checkCredit(auth.supabase);
+          if (!credit.ok) {
+            return Response.json({ error: credit.error }, { status: 402 });
+          }
+
           const form = await request.formData();
           const file = await imageFromForm(form);
-          // When the input is already a transparent cutout, background restoration
-          // would invent a fake background — keep it disabled in that case.
           const transparentFlag = String(form.get("transparent") ?? "") === "true";
           const backgroundEnhance = !transparentFlag;
           const payload = await uploadImagePayload(SPACE_BASE, file);
           const image = await callGradio(SPACE_BASE, "/inference", [
             payload,
-            true, // face_align
-            backgroundEnhance, // background_enhance
-            true, // face_upsample
-            2, // upscale
-            0.5, // codeformer_fidelity
+            true,
+            backgroundEnhance,
+            true,
+            2,
+            0.5,
           ]);
+          const deduction = await deductCredit(auth.supabase);
+          if (!deduction.ok) {
+            return Response.json({ error: deduction.error }, { status: 500 });
+          }
           return Response.json({ image });
         } catch (error) {
           return Response.json(
