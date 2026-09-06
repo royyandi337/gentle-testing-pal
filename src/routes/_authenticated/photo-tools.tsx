@@ -137,6 +137,7 @@ function PhotoToolsPage() {
           <TabsTrigger value="compress">Kompres</TabsTrigger>
           <TabsTrigger value="convert">Konversi</TabsTrigger>
           <TabsTrigger value="rotate">Rotasi</TabsTrigger>
+          <TabsTrigger value="label">Cetak Label/Resi</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resize" className="mt-4">
@@ -267,6 +268,10 @@ function PhotoToolsPage() {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="label" className="mt-4">
+          <LabelPrintCard />
         </TabsContent>
       </Tabs>
     </div>

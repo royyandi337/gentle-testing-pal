@@ -37,6 +37,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { CreditIndicator } from "@/components/shared/CreditIndicator";
+import { AdSlot } from "@/components/shared/AdSlot";
 
 export const NAV_GROUPS = [
   {
@@ -90,9 +92,12 @@ export function AppSidebar() {
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
             <Sparkles className="size-5" />
           </div>
-          <div className="min-w-0 transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
+          <div className="min-w-0 flex-1 transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
             <p className="truncate text-sm font-semibold leading-tight">ROY DIGITAL</p>
             <p className="truncate text-xs text-sidebar-foreground/70">SOLUTION</p>
+          </div>
+          <div className="transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
+            <CreditIndicator />
           </div>
         </div>
       </SidebarHeader>
@@ -130,6 +135,10 @@ export function AppSidebar() {
           </div>
         ))}
       </SidebarContent>
+
+      <div className="px-2 pb-2 group-data-[collapsible=icon]:hidden">
+        <AdSlot variant="sidebar" />
+      </div>
 
       <SidebarFooter className="border-t border-sidebar-border">
         <SidebarMenu>
