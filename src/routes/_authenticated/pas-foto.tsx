@@ -518,15 +518,15 @@ function PasFotoPage() {
             />
           ) : null}
 
-          {step === 4 ? (
+          {step === 3 ? (
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]">
               {/* Preview column */}
               <div className="space-y-4">
                 <Card className="border shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-base">4. Ukuran, Posisi &amp; Background</CardTitle>
+                    <CardTitle className="text-base">3. Ukuran, Posisi &amp; Background</CardTitle>
                     <CardDescription>
-                      Atur hasil akhir pas foto sebelum menyusun lembar cetak.
+                      Ganti warna background dan atur ukuran/crop sebelum langkah enhance.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
