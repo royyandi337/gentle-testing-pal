@@ -568,9 +568,9 @@ function PasFotoPage() {
                     />
 
                     <StepNav
-                      onBack={() => goTo(3)}
-                      onNext={() => goTo(5)}
-                      nextLabel="Lanjut ke Cetak"
+                      onBack={() => goTo(2)}
+                      onNext={() => goTo(4)}
+                      nextLabel="Lanjut ke Enhance"
                     />
                     <ProcessState phase={phase} message={statusMsg} />
                   </CardContent>
