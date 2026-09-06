@@ -3,6 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/AppShell";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { LabelPrintCard } from "@/components/shared/LabelPrintCard";
+import { CollageCard } from "@/components/shared/CollageCard";
+import { PolaroidCard } from "@/components/shared/PolaroidCard";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -143,6 +145,8 @@ function PhotoToolsPage() {
           <TabsTrigger value="convert">Konversi</TabsTrigger>
           <TabsTrigger value="rotate">Rotasi</TabsTrigger>
           <TabsTrigger value="label">Cetak Label/Resi</TabsTrigger>
+          <TabsTrigger value="kolase">Kolase</TabsTrigger>
+          <TabsTrigger value="polaroid">Polaroid</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resize" className="mt-4">
@@ -277,6 +281,14 @@ function PhotoToolsPage() {
 
         <TabsContent value="label" className="mt-4">
           <LabelPrintCard />
+        </TabsContent>
+
+        <TabsContent value="kolase" className="mt-4">
+          <CollageCard />
+        </TabsContent>
+
+        <TabsContent value="polaroid" className="mt-4">
+          <PolaroidCard />
         </TabsContent>
       </Tabs>
     </div>
