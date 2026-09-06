@@ -1,11 +1,11 @@
-import { useCredits, type Tier } from "@/hooks/useCredits";
+import { useCredits } from "@/hooks/useCredits";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export type AdSlotVariant = "banner" | "sidebar" | "inline";
 
 const VARIANT_CLASSES: Record<AdSlotVariant, string> = {
   banner: "h-20 w-full",
-  sidebar: "h-64 w-full",
+  sidebar: "h-40 w-full",
   inline: "h-28 w-full",
 };
 
@@ -32,17 +32,15 @@ export function AdSlot({
 
   return (
     <div
-      className={`${VARIANT_CLASSES[variant]} ${className ?? ""} flex items-center justify-center rounded-lg border border-dashed border-muted-foreground/30 bg-muted/40 text-center`}
+      className={`${VARIANT_CLASSES[variant]} ${className ?? ""} flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-sidebar-foreground/20 bg-sidebar-accent/30 text-center`}
       aria-label="Slot iklan"
     >
-      <div className="space-y-1">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Iklan
-        </p>
-        <p className="text-[10px] text-muted-foreground/70">
-          {VARIANT_LABEL[variant]} — khusus pengguna Trial
-        </p>
-      </div>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-sidebar-foreground/50">
+        Iklan
+      </p>
+      <p className="text-[9.5px] text-sidebar-foreground/40">
+        {VARIANT_LABEL[variant]} — tampil khusus tier Trial
+      </p>
     </div>
   );
 }

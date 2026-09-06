@@ -37,8 +37,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CreditIndicator } from "@/components/shared/CreditIndicator";
+import { AdSlot } from "@/components/shared/AdSlot";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useCredits } from "@/hooks/useCredits";
 import { useEffect, useState } from "react";
+import { Crown } from "lucide-react";
 
 export const NAV_GROUPS = [
   {
@@ -108,13 +111,13 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="transition-[width] duration-300 ease-in-out">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2.5 px-1 py-1.5">
-          <div
-            className="size-7 shrink-0 rounded-lg"
-            style={{
-              background:
-                "linear-gradient(135deg, #C6392F 0 50%, #27538F 50% 100%)",
-            }}
-          />
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-white/10">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" className="size-4">
+              <path d="M12 2 3 7v10l9 5 9-5V7z" />
+              <path d="M3 7l9 5 9-5" />
+              <path d="M12 22V12" />
+            </svg>
+          </div>
           <div className="min-w-0 flex-1 font-display transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
             <p className="truncate text-[13.5px] font-bold leading-tight text-white">
               {settings.site_name.split(" ").slice(0, 2).join(" ") || "ROY DIGITAL"}
@@ -160,8 +163,14 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
 
-      <div className="px-2 pb-2 group-data-[collapsible=icon]:hidden">
+      <div className="space-y-2 px-2 pb-2 group-data-[collapsible=icon]:hidden">
         <CreditIndicator />
+        {tier === "premium" || remaining === -1 ? (
+          <div className="flex items-center gap-1.5 rounded-lg bg-accent/15 px-2.5 py-1.5 text-xs font-medium text-accent">
+            <Crown className="size-3" /> Premium — tak terbatas
+          </div>
+        ) : null}
+        <AdSlot variant="sidebar" />
       </div>
 
       <SidebarFooter className="border-t border-sidebar-border">

@@ -4,22 +4,17 @@ import {
   FileText,
   FileType2,
   Images,
-  Sparkles,
+  Upload,
+  Scissors,
   Wand2,
-  FileImage,
-  Combine,
-  Minimize2,
-  FileOutput,
-  FolderClock,
   Printer,
-  Layers,
-  Image as ImageIcon,
-  AlertCircle,
-  Inbox,
+  Clock,
+  Zap,
+  Crown,
+  EyeOff,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useCredits } from "@/hooks/useCredits";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import { EmptyState, ErrorState } from "@/components/shared/EmptyState";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -41,138 +36,112 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-const CATEGORIES = [
-  {
-    to: "/pas-foto",
-    icon: Camera,
-    title: "Pas Foto",
-    desc: "Upload sampai siap cetak, lengkap dengan AI.",
-  },
-  {
-    to: "/pdf-tools",
-    icon: FileText,
-    title: "PDF Tools",
-    desc: "Convert, gabung, kompres, dan amankan PDF.",
-  },
-  {
-    to: "/word-tools",
-    icon: FileType2,
-    title: "Word Tools",
-    desc: "Konversi dokumen Word tanpa merusak format.",
-  },
-  {
-    to: "/photo-tools",
-    icon: Images,
-    title: "Photo Tools",
-    desc: "Resize, kompres, dan konversi banyak foto sekaligus.",
-  },
-] as const;
+const FLOW_CHIPS = ["Upload", "Remove BG", "Enhance", "Siap cetak"];
 
-const POPULAR = [
-  { to: "/pas-foto", icon: Camera, label: "Pas Foto 3×4", meta: "Alur 6 langkah" },
-  { to: "/ai-tools", icon: Wand2, label: "Hapus Background AI", meta: "Dipakai 9× bulan ini" },
-  { to: "/word-tools", icon: FileOutput, label: "PDF ke Word", meta: "Terakhir dipakai kemarin" },
-  { to: "/photo-tools", icon: Printer, label: "Cetak Label/Resi", meta: "Baru — belum pernah dipakai" },
-  { to: "/photo-tools", icon: Layers, label: "Kolase Foto", meta: "Baru — belum pernah dipakai" },
-  { to: "/photo-tools", icon: ImageIcon, label: "Polaroid", meta: "Baru — belum pernah dipakai" },
+const CATEGORIES = [
+  { to: "/pas-foto", icon: Camera, title: "Pas Foto", desc: "Upload sampai siap cetak, lengkap dengan editor dan AI." },
+  { to: "/pdf-tools", icon: FileText, title: "PDF Tools", desc: "Convert, gabung, kompres, dan kelola PDF." },
+  { to: "/word-tools", icon: FileType2, title: "Word Tools", desc: "Konversi dokumen Word tanpa merusak banyak format." },
+  { to: "/photo-tools", icon: Images, title: "Photo Tools", desc: "Resize, kompres, convert, dan optimalkan gambar." },
 ] as const;
 
 function Dashboard() {
   const settings = useSiteSettings();
+  const { tier, remaining, dailyLimit, loading } = useCredits();
+
+  const isPremium = tier === "premium" || remaining === -1;
+  const creditLabel = isPremium ? "Tak terbatas" : loading ? "…" : `${remaining} / ${dailyLimit}`;
+  const adLabel = tier === "trial" ? "Tampil" : "Tersembunyi";
 
   return (
-    <div className="mx-auto max-w-5xl">
-      {/* Hero card — navy-deep, not full-bleed */}
-      <section className="mb-8 overflow-hidden rounded-2xl bg-primary p-6 text-primary-foreground sm:p-8 md:grid md:grid-cols-[1.3fr_0.7fr] md:items-center md:gap-6">
-        <div>
-          <h1 className="font-display text-2xl font-bold leading-tight md:text-3xl">
+    <div className="mx-auto max-w-[1000px]">
+      {/* Hero — navy with horizontal flow chips */}
+      <section className="relative mb-7 flex flex-col gap-8 overflow-hidden rounded-[22px] bg-[#0E1B30] p-7 md:flex-row md:items-center md:justify-between md:p-10">
+        <div
+          className="absolute inset-0"
+          style={{ background: "radial-gradient(circle at 90% 10%, rgba(199,154,70,.14), transparent 55%)" }}
+        />
+        <div className="relative">
+          <h1 className="max-w-[400px] font-display text-2xl font-bold leading-[1.2] text-white md:text-[27px]">
             Pas foto dan dokumen resmi, beres dalam satu alur.
           </h1>
-          <p className="mt-2.5 max-w-md text-sm text-primary-foreground/70">
-            {settings.site_tagline ||
-              "Dari upload sampai siap cetak — hapus background, pertajam wajah, atur ukuran, susun ke kertas."}
+          <p className="mt-3 max-w-[360px] text-sm text-[#B9C3D6]">
+            {settings.site_tagline || "Solusi Digital untuk Foto, Dokumen & Kreativitas."}
           </p>
           <Link
             to="/pas-foto"
-            className="mt-5 inline-flex items-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-primary transition hover:bg-white/90"
+            className="relative mt-5 inline-flex rounded-[11px] bg-white px-5 py-2.5 text-[14.5px] font-semibold text-[#0E1B30] transition hover:bg-white/90"
           >
             Mulai Pas Foto
           </Link>
         </div>
-        {/* Decorative strip — tilted photo frames */}
-        <div className="mt-6 hidden md:block">
-          <div className="mx-auto w-fit -rotate-3 space-y-1.5 rounded-md bg-white p-2 pb-4 shadow-lg">
-            {[
-              { label: "Upload", bg: "bg-gradient-to-br from-slate-600 to-slate-800" },
-              { label: "Remove BG", bg: "bg-[#C6392F]" },
-              { label: "Enhance", bg: "bg-[#27538F]" },
-              { label: "Siap cetak", bg: "bg-[#1E7A4C]" },
-            ].map((f) => (
-              <div
-                key={f.label}
-                className={`flex h-14 w-36 items-end rounded px-1.5 py-1 text-[9px] font-semibold text-white ${f.bg}`}
-              >
-                {f.label}
-              </div>
-            ))}
-          </div>
+        <div className="relative flex shrink-0 gap-2.5">
+          {FLOW_CHIPS.map((chip, i) => (
+            <div
+              key={chip}
+              className="min-w-[88px] rounded-xl border border-white/10 bg-white/7 px-4 py-3 text-center"
+            >
+              <span className="block text-[11.5px] font-semibold text-[#C7CEDB]">{chip}</span>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Category grid — navy top border accent */}
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Kategori utama
-      </h2>
-      <div className="mb-8 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Category cards */}
+      <div className="mb-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {CATEGORIES.map((c) => (
           <Link key={c.title} to={c.to} className="group">
-            <Card className="h-full border-t-[3px] border-t-primary transition-shadow group-hover:shadow-md">
-              <CardContent className="p-4">
-                <div className="mb-3 flex size-8 items-center justify-center rounded-lg bg-muted">
-                  <c.icon className="size-4 text-primary" />
-                </div>
-                <h3 className="font-display text-sm font-semibold">{c.title}</h3>
-                <p className="mt-1 text-xs text-muted-foreground">{c.desc}</p>
-              </CardContent>
-            </Card>
+            <div className="h-full rounded-2xl border border-border bg-card p-5 transition-shadow group-hover:shadow-md">
+              <div className="mb-4 flex size-10 items-center justify-center rounded-[11px]" style={{ background: "var(--paper-dim)" }}>
+                <c.icon className="size-5 text-primary" strokeWidth={1.8} />
+              </div>
+              <h3 className="font-display text-[15px] font-semibold text-foreground">{c.title}</h3>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-slate">{c.desc}</p>
+            </div>
           </Link>
         ))}
       </div>
 
-      {/* Popular tools — row style */}
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Sering dipakai
-      </h2>
-      <Card className="mb-8">
-        <CardContent className="divide-y divide-border p-0">
-          {POPULAR.map((t) => (
-            <Link key={t.label} to={t.to} className="block">
-              <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50">
-                <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <t.icon className="size-3.5 text-primary" />
-                </div>
-                <span className="text-sm font-medium">{t.label}</span>
-                <span className="ml-auto text-right text-xs text-muted-foreground">{t.meta}</span>
-              </div>
-            </Link>
-          ))}
-        </CardContent>
-      </Card>
+      {/* Lower panels */}
+      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        {/* Recent activity — empty state */}
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <h4 className="mb-4 text-[14.5px] font-semibold text-foreground">Aktivitas terbaru</h4>
+          <div className="flex flex-col items-center px-4 py-7 text-center">
+            <div className="mb-3.5 flex size-10 items-center justify-center rounded-xl" style={{ background: "var(--paper-dim)" }}>
+              <Clock className="size-4 text-slate-light" strokeWidth={1.8} />
+            </div>
+            <strong className="text-[13.5px] font-semibold text-slate">Belum ada aktivitas</strong>
+            <span className="mt-1 text-[12.5px] text-slate-light">Riwayat proses akan muncul di sini</span>
+          </div>
+        </div>
 
-      {/* Empty & error state examples */}
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Contoh tampilan kosong &amp; error
-      </h2>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <EmptyState
-          icon={FolderClock}
-          title="Belum ada riwayat"
-          description="Hasil dari Pas Foto, PDF, Word, dan Photo Tools akan muncul di sini setelah kamu memprosesnya."
-        />
-        <ErrorState
-          title="Proses AI gagal"
-          description="Server AI tidak merespons. Coba lagi, atau lewati langkah ini dan lanjutkan manual."
-        />
+        {/* Account status */}
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <h4 className="mb-4 text-[14.5px] font-semibold text-foreground">Status akun</h4>
+          <div className="divide-y divide-border">
+            <div className="flex items-center justify-between py-3">
+              <span className="flex items-center gap-2 text-[13.2px] text-slate">
+                <Crown className="size-4 text-accent" /> Tier
+              </span>
+              <span className="text-[13.2px] font-semibold capitalize text-foreground">
+                {loading ? "…" : (tier ?? "trial")}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-3">
+              <span className="flex items-center gap-2 text-[13.2px] text-slate">
+                <Zap className="size-4 text-accent" /> Kredit AI harian
+              </span>
+              <span className="text-[13.2px] font-semibold text-foreground">{creditLabel}</span>
+            </div>
+            <div className="flex items-center justify-between py-3">
+              <span className="flex items-center gap-2 text-[13.2px] text-slate">
+                <EyeOff className="size-4 text-slate-light" /> Iklan
+              </span>
+              <span className="text-[13.2px] font-semibold text-foreground">{loading ? "…" : adLabel}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

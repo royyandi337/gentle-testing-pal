@@ -14,7 +14,7 @@ export function CreditIndicator({ className }: { className?: string }) {
         )}
       >
         <Loader2 className="size-3 animate-spin" />
-        Memuat kredit...
+        Memuat...
       </div>
     );
   }
@@ -23,11 +23,11 @@ export function CreditIndicator({ className }: { className?: string }) {
     return (
       <div
         className={cn(
-          "flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-2.5 py-1.5 text-xs font-medium text-amber-400",
+          "flex items-center gap-1.5 rounded-lg bg-accent/15 px-2.5 py-1.5 text-xs font-medium text-accent",
           className,
         )}
       >
-        <Crown className="size-3" /> Premium — tak terbatas
+        <Crown className="size-3" /> Premium
       </div>
     );
   }
@@ -35,10 +35,10 @@ export function CreditIndicator({ className }: { className?: string }) {
   const pct = dailyLimit > 0 ? Math.round((remaining / dailyLimit) * 100) : 0;
   const color =
     pct > 50
-      ? "text-emerald-400"
+      ? "text-success"
       : pct > 20
-        ? "text-amber-400"
-        : "text-red-400";
+        ? "text-accent"
+        : "text-destructive";
 
   return (
     <div

@@ -5,17 +5,17 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * ROY DIGITAL SOLUTION design system — "elegan-branded" (mockup v2).
- * Navy single-accent brand. Semantic tokens only — never hardcode colors in components.
+ * ROY DIGITAL SOLUTION design system — mockup v3 (landing + login + dashboard).
+ * Navy + gold single-accent brand. Semantic tokens only — never hardcode colors in components.
  */
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-sm: 9px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-2xl: 28px;
+  --radius-3xl: 32px;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -57,92 +57,97 @@
 }
 
 :root {
-  --radius: 0.875rem;
+  /* Paper background */
+  --background: #F6F3EC;
+  --paper-dim: #EFEBE0;
+  --foreground: #171A21;
+  --slate: #5B6472;
+  --slate-light: #8892A0;
 
-  /* Paper background, ink foreground */
-  --background: oklch(0.965 0.006 75);
-  --foreground: oklch(0.18 0.02 260);
-
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 260);
+  --card: #FFFFFF;
+  --card-foreground: #171A21;
+  --popover: #FFFFFF;
+  --popover-foreground: #171A21;
 
   /* Navy primary */
-  --primary: oklch(0.28 0.05 257);
-  --primary-foreground: oklch(0.97 0.005 240);
+  --primary: #1B2A44;
+  --primary-foreground: #FFFFFF;
 
-  --secondary: oklch(0.95 0.008 75);
-  --secondary-foreground: oklch(0.3 0.03 257);
+  --secondary: #EFEBE0;
+  --secondary-foreground: #171A21;
 
-  --muted: oklch(0.94 0.008 75);
-  --muted-foreground: oklch(0.5 0.025 260);
+  --muted: #EFEBE0;
+  --muted-foreground: #5B6472;
 
-  --accent: oklch(0.55 0.16 25);
-  --accent-foreground: oklch(0.2 0.04 25);
+  /* Gold accent */
+  --accent: #C79A46;
+  --accent-foreground: #132340;
 
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.97 0.005 240);
+  --destructive: #B4553E;
+  --destructive-foreground: #FFFFFF;
 
-  --success: oklch(0.58 0.14 155);
-  --success-foreground: oklch(0.97 0.005 240);
+  --success: #3E7C5A;
+  --success-foreground: #FFFFFF;
 
-  --border: oklch(0.9 0.008 75);
-  --input: oklch(0.9 0.008 75);
-  --ring: oklch(0.28 0.05 257);
+  --border: #E1DACB;
+  --input: #E1DACB;
+  --ring: #25375A;
 
-  --chart-1: oklch(0.28 0.05 257);
-  --chart-2: oklch(0.58 0.14 155);
-  --chart-3: oklch(0.55 0.16 25);
-  --chart-4: oklch(0.5 0.15 257);
-  --chart-5: oklch(0.62 0.17 25);
+  --chart-1: #1B2A44;
+  --chart-2: #3E7C5A;
+  --chart-3: #C79A46;
+  --chart-4: #B4553E;
+  --chart-5: #3F6FB0;
 
-  /* Sidebar: navy-deep */
-  --sidebar: oklch(0.2 0.04 257);
-  --sidebar-foreground: oklch(0.8 0.02 250);
-  --sidebar-primary: oklch(0.55 0.12 257);
-  --sidebar-primary-foreground: oklch(0.97 0.005 240);
-  --sidebar-accent: oklch(0.25 0.04 257);
-  --sidebar-accent-foreground: oklch(0.97 0.005 240);
-  --sidebar-border: oklch(0.28 0.04 257);
-  --sidebar-ring: oklch(0.55 0.12 257);
+  /* Sidebar: navy-950 */
+  --sidebar: #0E1B30;
+  --sidebar-foreground: #C4CBDA;
+  --sidebar-primary: #1B2A44;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(255, 255, 255, 0.08);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #25375A;
 }
 
 .dark {
-  --background: oklch(0.14 0.025 257);
-  --foreground: oklch(0.93 0.008 245);
-  --card: oklch(0.19 0.03 257);
-  --card-foreground: oklch(0.93 0.008 245);
-  --popover: oklch(0.19 0.03 257);
-  --popover-foreground: oklch(0.93 0.008 245);
-  --primary: oklch(0.62 0.1 257);
-  --primary-foreground: oklch(0.14 0.025 257);
-  --secondary: oklch(0.25 0.035 257);
-  --secondary-foreground: oklch(0.93 0.008 245);
-  --muted: oklch(0.25 0.035 257);
-  --muted-foreground: oklch(0.68 0.02 250);
-  --accent: oklch(0.6 0.16 25);
-  --accent-foreground: oklch(0.15 0.03 25);
-  --destructive: oklch(0.68 0.2 22);
-  --destructive-foreground: oklch(0.97 0.005 240);
-  --success: oklch(0.65 0.14 155);
-  --success-foreground: oklch(0.14 0.025 257);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.62 0.1 257);
-  --chart-1: oklch(0.62 0.1 257);
-  --chart-2: oklch(0.65 0.14 155);
-  --chart-3: oklch(0.6 0.16 25);
-  --chart-4: oklch(0.55 0.15 257);
-  --chart-5: oklch(0.65 0.17 25);
-  --sidebar: oklch(0.11 0.03 257);
-  --sidebar-foreground: oklch(0.8 0.02 250);
-  --sidebar-primary: oklch(0.62 0.1 257);
-  --sidebar-primary-foreground: oklch(0.14 0.025 257);
-  --sidebar-accent: oklch(0.18 0.03 257);
-  --sidebar-accent-foreground: oklch(0.93 0.008 245);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.62 0.1 257);
+  --background: #0A1424;
+  --paper-dim: #0E1B30;
+  --foreground: #E8EAF0;
+  --slate: #8892A0;
+  --slate-light: #6E7A93;
+  --card: #132340;
+  --card-foreground: #E8EAF0;
+  --popover: #132340;
+  --popover-foreground: #E8EAF0;
+  --primary: #1B2A44;
+  --primary-foreground: #FFFFFF;
+  --secondary: #1B2A44;
+  --secondary-foreground: #E8EAF0;
+  --muted: #1B2A44;
+  --muted-foreground: #8892A0;
+  --accent: #C79A46;
+  --accent-foreground: #0A1424;
+  --destructive: #B4553E;
+  --destructive-foreground: #FFFFFF;
+  --success: #3E7C5A;
+  --success-foreground: #FFFFFF;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #25375A;
+  --chart-1: #1B2A44;
+  --chart-2: #3E7C5A;
+  --chart-3: #C79A46;
+  --chart-4: #B4553E;
+  --chart-5: #3F6FB0;
+  --sidebar: #0A1424;
+  --sidebar-foreground: #C4CBDA;
+  --sidebar-primary: #1B2A44;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(255, 255, 255, 0.08);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #25375A;
 }
 
 @layer base {
@@ -159,6 +164,7 @@
   h1,
   h2,
   h3,
+  h4,
   .font-display {
     font-family: var(--font-display);
     letter-spacing: -0.01em;
