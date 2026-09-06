@@ -18,6 +18,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export const Route = createFileRoute("/_authenticated/pengaturan-website")({
   ssr: false,
@@ -58,6 +71,15 @@ type UserRow = {
   created_at: string;
   last_sign_in_at: string | null;
   role: string;
+  tier: string;
+};
+
+type Tier = "trial" | "regular" | "premium";
+
+const TIER_LABELS: Record<Tier, string> = {
+  trial: "Trial",
+  regular: "Reguler",
+  premium: "Premium",
 };
 
 type ToolStat = { tool: string; count: number };
@@ -130,6 +152,21 @@ function PengaturanWebsitePage() {
       setUsers(data as UserRow[]);
     }
     setLoadingUsers(false);
+  }
+
+  async function changeTier(userId: string, newTier: Tier) {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ tier: newTier, updated_at: new Date().toISOString() })
+      .eq("id", userId);
+    if (error) {
+      toast.error("Gagal mengubah tier pengguna.");
+      return;
+    }
+    setUsers((prev) =>
+      prev.map((u) => (u.user_id === userId ? { ...u, tier: newTier } : u)),
+    );
+    toast.success(`Tier berhasil diubah ke ${TIER_LABELS[newTier]}.`);
   }
 
   async function loadStats() {
@@ -317,21 +354,52 @@ function PengaturanWebsitePage() {
                   <TableRow>
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Tier</TableHead>
                     <TableHead>Bergabung</TableHead>
                     <TableHead>Login Terakhir</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((u) => (
+                  {users.map((u) => {
+                    const currentTier = (u.tier as Tier) || "trial";
+                    const isOwner = u.role === "owner";
+                    return (
                     <TableRow key={u.user_id}>
                       <TableCell className="font-medium">{u.email}</TableCell>
                       <TableCell>
                         <Badge
-                          variant={u.role === "owner" ? "default" : "secondary"}
+                          variant={isOwner ? "default" : "secondary"}
                           className="text-xs"
                         >
                           {u.role}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Select
+                                value={currentTier}
+                                onValueChange={(v) => changeTier(u.user_id, v as Tier)}
+                                disabled={isOwner}
+                              >
+                                <SelectTrigger className="h-8 w-32 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="trial">Trial</SelectItem>
+                                  <SelectItem value="regular">Reguler</SelectItem>
+                                  <SelectItem value="premium">Premium</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TooltipTrigger>
+                            {isOwner && (
+                              <TooltipContent>
+                                Tier owner tidak dapat diubah
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(u.created_at)}
@@ -340,7 +408,8 @@ function PengaturanWebsitePage() {
                         {formatDate(u.last_sign_in_at)}
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
