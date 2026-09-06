@@ -153,6 +153,102 @@ export async function compressPdf(file: File) {
   return toBlob(bytes);
 }
 
+/**
+ * Compresses a PDF to a target file size (in MB) by rasterizing pages to JPEG
+ * at decreasing quality levels until the target is met.
+ */
+export async function compressPdfToTarget(
+  file: File,
+  targetMB: number,
+  onProgress?: (info: { phase: string; done: number; total: number }) => void,
+): Promise<Blob> {
+  const targetBytes = targetMB * 1024 * 1024;
+
+  // First try object-stream compression (lossless, preserves text).
+  const doc = await readPdf(file);
+  const lossless = await doc.save({ useObjectStreams: true, addDefaultPage: false });
+  if (lossless.byteLength <= targetBytes) {
+    return toBlob(lossless);
+  }
+
+  // Fall back to rasterization: render each page as JPEG at decreasing quality.
+  const pdfjs = await import("pdfjs-dist");
+  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+
+  const data = new Uint8Array(await file.arrayBuffer());
+  const srcDoc = await pdfjs.getDocument({ data }).promise;
+  const numPages = srcDoc.numPages;
+
+  const qualities = [0.85, 0.7, 0.55, 0.4, 0.25];
+  const scales = [1.5, 1.0, 0.75];
+
+  for (const scale of scales) {
+    for (const quality of qualities) {
+      onProgress?.({ phase: `Skala ${scale}, kualitas ${Math.round(quality * 100)}%`, done: 0, total: numPages });
+      const out = await PDFDocument.create();
+
+      for (let i = 1; i <= numPages; i++) {
+        onProgress?.({ phase: `Render halaman ${i}/${numPages}`, done: i, total: numPages });
+        const page = await srcDoc.getPage(i);
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        const ctx = canvas.getContext("2d")!;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+        const blob = await new Promise<Blob>((resolve, reject) =>
+          canvas.toBlob(
+            (b) => (b ? resolve(b) : reject(new Error("Gagal merender halaman."))),
+            "image/jpeg",
+            quality,
+          ),
+        );
+        const jpgBytes = new Uint8Array(await blob.arrayBuffer());
+        const img = await out.embedJpg(jpgBytes);
+        out.addPage([canvas.width, canvas.height]).drawImage(img, {
+          x: 0, y: 0, width: canvas.width, height: canvas.height,
+        });
+      }
+
+      const result = await out.save();
+      if (result.byteLength <= targetBytes) {
+        return toBlob(result);
+      }
+    }
+  }
+
+  // Last resort: lowest scale + lowest quality.
+  const out = await PDFDocument.create();
+  for (let i = 1; i <= numPages; i++) {
+    onProgress?.({ phase: `Render akhir halaman ${i}/${numPages}`, done: i, total: numPages });
+    const page = await srcDoc.getPage(i);
+    const viewport = page.getViewport({ scale: 0.5 });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("Gagal merender halaman."))),
+        "image/jpeg",
+        0.2,
+      ),
+    );
+    const jpgBytes = new Uint8Array(await blob.arrayBuffer());
+    const img = await out.embedJpg(jpgBytes);
+    out.addPage([canvas.width, canvas.height]).drawImage(img, {
+      x: 0, y: 0, width: canvas.width, height: canvas.height,
+    });
+  }
+  return toBlob(await out.save());
+}
+
 async function fileToJpgBytes(file: File): Promise<{ bytes: Uint8Array; isPng: boolean }> {
   const isPng = file.type.includes("png");
   if (!file.type.includes("webp")) {

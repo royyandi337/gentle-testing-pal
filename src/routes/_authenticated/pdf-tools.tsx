@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { downloadBlob } from "@/lib/image";
 import {
   compressPdf,
+  compressPdfToTarget,
   docxToPdf,
   extractPages,
   imagesToPdf,
@@ -113,7 +114,7 @@ function PdfToolsPage() {
   const [protectFile, setProtectFile] = useState<File[]>([]);
   const [pdfPassword, setPdfPassword] = useState("");
   const [unlockPassword, setUnlockPassword] = useState("");
-  const [secureTab, setSecureTab] = useState("protect");
+  const [compressTarget, setCompressTarget] = useState(1);
 
   const baseName = (file: File) => file.name.replace(/\.[^.]+$/, "");
 
@@ -450,6 +451,46 @@ function PdfToolsPage() {
               }
             >
               Buka Password
+            </Button>
+          </ToolCard>
+
+          <ToolCard
+            title="Kompres PDF ke Target Ukuran"
+            description="Kecilkan PDF sampai di bawah ukuran yang Anda tentukan."
+          >
+            <FileDropzone
+              accept="application/pdf"
+              files={manageFile}
+              onFiles={setManageFile}
+              hint="Satu berkas PDF"
+            />
+            <div className="space-y-1.5">
+              <Label htmlFor="compress-target">Target ukuran maksimal (MB)</Label>
+              <Input
+                id="compress-target"
+                type="number"
+                min={0.1}
+                step={0.1}
+                value={compressTarget}
+                onChange={(e) => setCompressTarget(Number(e.target.value) || 1)}
+              />
+            </div>
+            <Button
+              disabled={!manageFile.length || phase === "working"}
+              onClick={() =>
+                run("compress-target", async () => {
+                  const file = manageFile[0]!;
+                  setProgress(0);
+                  setMessage("Mengompres PDF ke target ukuran...");
+                  const blob = await compressPdfToTarget(file, compressTarget, (info) => {
+                    setProgress(Math.round((info.done / info.total) * 100));
+                    setMessage(`${info.phase}...`);
+                  });
+                  return [{ blob, fileName: `${baseName(file)}-kompres-${compressTarget}mb.pdf` }];
+                })
+              }
+            >
+              Kompres ke Target
             </Button>
           </ToolCard>
         </TabsContent>
