@@ -15,17 +15,38 @@ import {
 import { canvasToBlob, downloadBlob, fileToDataUrl, loadImage } from "@/lib/image";
 import { saveResult } from "@/lib/history";
 
-const LAYOUTS = [
-  { value: "4", label: "4 per lembar (2 × 2)", cols: 2, rows: 2 },
-  { value: "2", label: "2 per lembar (1 × 2)", cols: 1, rows: 2 },
-  { value: "6", label: "6 per lembar (2 × 3)", cols: 2, rows: 3 },
-  { value: "9", label: "9 per lembar (3 × 3)", cols: 3, rows: 3 },
-] as const;
+type GridLayout = {
+  type: "grid";
+  value: string;
+  label: string;
+  cols: number;
+  rows: number;
+};
+
+type CardLayout = {
+  type: "card";
+  value: string;
+  label: string;
+  cardWmm: number;
+  cardHmm: number;
+};
+
+const LAYOUTS: (GridLayout | CardLayout)[] = [
+  { type: "grid", value: "4", label: "4 per lembar (2 × 2)", cols: 2, rows: 2 },
+  { type: "grid", value: "2", label: "2 per lembar (1 × 2)", cols: 1, rows: 2 },
+  { type: "grid", value: "6", label: "6 per lembar (2 × 3)", cols: 2, rows: 3 },
+  { type: "grid", value: "9", label: "9 per lembar (3 × 3)", cols: 3, rows: 3 },
+  { type: "card", value: "ktp", label: "KTP (8,56 × 5,4 cm) — 10 per lembar", cardWmm: 85.6, cardHmm: 53.98 },
+  { type: "card", value: "id", label: "Kartu ID (8,56 × 5,4 cm) — 10 per lembar", cardWmm: 85.6, cardHmm: 53.98 },
+];
 
 // A4 at 150 DPI.
 const PAGE_W = 1240;
 const PAGE_H = 1754;
 const PAGE_MARGIN = 40;
+const MM_TO_PX = 150 / 25.4;
+const CROP_MARK_LEN = 14;
+const CROP_MARK_GAP = 4;
 
 type Cropped = { name: string; dataUrl: string; width: number; height: number };
 
@@ -86,14 +107,66 @@ async function autoCrop(file: File): Promise<Cropped> {
   };
 }
 
+function drawCropMarks(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  ctx.strokeStyle = "#666";
+  ctx.lineWidth = 1;
+  const g = CROP_MARK_GAP;
+  const len = CROP_MARK_LEN;
+
+  const corners = [
+    { cx: x, cy: y, dx: -1, dy: -1 },
+    { cx: x + w, cy: y, dx: 1, dy: -1 },
+    { cx: x, cy: y + h, dx: -1, dy: 1 },
+    { cx: x + w, cy: y + h, dx: 1, dy: 1 },
+  ];
+
+  for (const { cx, cy, dx, dy } of corners) {
+    ctx.beginPath();
+    ctx.moveTo(cx + dx * g, cy + dy * g);
+    ctx.lineTo(cx + dx * (g + len), cy + dy * g);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + dx * g, cy + dy * g);
+    ctx.lineTo(cx + dx * g, cy + dy * (g + len));
+    ctx.stroke();
+  }
+}
+
 export function LabelPrintCard() {
   const [items, setItems] = useState<Cropped[]>([]);
   const [layout, setLayout] = useState<string>("4");
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | undefined>(undefined);
 
-  const grid = LAYOUTS.find((l) => l.value === layout) ?? LAYOUTS[0];
-  const perPage = grid.cols * grid.rows;
+  const layoutDef = LAYOUTS.find((l) => l.value === layout) ?? LAYOUTS[0];
+
+  let perPage: number;
+  let cols: number;
+  let rows: number;
+  let cardW = 0;
+  let cardH = 0;
+
+  if (layoutDef.type === "grid") {
+    cols = layoutDef.cols;
+    rows = layoutDef.rows;
+    perPage = cols * rows;
+  } else {
+    cardW = Math.round(layoutDef.cardWmm * MM_TO_PX);
+    cardH = Math.round(layoutDef.cardHmm * MM_TO_PX);
+    const availW = PAGE_W - PAGE_MARGIN * 2;
+    const availH = PAGE_H - PAGE_MARGIN * 2;
+    const gap = CROP_MARK_GAP * 2 + CROP_MARK_LEN;
+    cols = Math.floor((availW + gap) / (cardW + gap));
+    rows = Math.floor((availH + gap) / (cardH + gap));
+    perPage = cols * rows;
+  }
+
   const pageCount = Math.max(1, Math.ceil(items.length / perPage));
 
   async function handleFiles(files: File[]) {
@@ -126,24 +199,50 @@ export function LabelPrintCard() {
       const ctx = canvas.getContext("2d")!;
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, PAGE_W, PAGE_H);
-      const cellW = (PAGE_W - PAGE_MARGIN * 2) / grid.cols;
-      const cellH = (PAGE_H - PAGE_MARGIN * 2) / grid.rows;
-      const slice = items.slice(p * perPage, (p + 1) * perPage);
-      for (let i = 0; i < slice.length; i += 1) {
-        const item = slice[i]!;
-        const img = await loadImage(item.dataUrl);
-        const col = i % grid.cols;
-        const row = Math.floor(i / grid.cols);
-        const pad = 12;
-        const boxW = cellW - pad * 2;
-        const boxH = cellH - pad * 2;
-        const scale = Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight);
-        const w = img.naturalWidth * scale;
-        const h = img.naturalHeight * scale;
-        const x = PAGE_MARGIN + col * cellW + (cellW - w) / 2;
-        const y = PAGE_MARGIN + row * cellH + (cellH - h) / 2;
-        ctx.drawImage(img, x, y, w, h);
+
+      if (layoutDef.type === "grid") {
+        const cellW = (PAGE_W - PAGE_MARGIN * 2) / cols;
+        const cellH = (PAGE_H - PAGE_MARGIN * 2) / rows;
+        const slice = items.slice(p * perPage, (p + 1) * perPage);
+        for (let i = 0; i < slice.length; i += 1) {
+          const item = slice[i]!;
+          const img = await loadImage(item.dataUrl);
+          const col = i % cols;
+          const row = Math.floor(i / cols);
+          const pad = 12;
+          const boxW = cellW - pad * 2;
+          const boxH = cellH - pad * 2;
+          const scale = Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight);
+          const w = img.naturalWidth * scale;
+          const h = img.naturalHeight * scale;
+          const x = PAGE_MARGIN + col * cellW + (cellW - w) / 2;
+          const y = PAGE_MARGIN + row * cellH + (cellH - h) / 2;
+          ctx.drawImage(img, x, y, w, h);
+        }
+      } else {
+        const gap = CROP_MARK_GAP * 2 + CROP_MARK_LEN;
+        const totalW = cols * cardW + (cols - 1) * gap;
+        const totalH = rows * cardH + (rows - 1) * gap;
+        const startX = (PAGE_W - totalW) / 2;
+        const startY = (PAGE_H - totalH) / 2;
+        const slice = items.slice(p * perPage, (p + 1) * perPage);
+        for (let i = 0; i < slice.length; i += 1) {
+          const item = slice[i]!;
+          const img = await loadImage(item.dataUrl);
+          const col = i % cols;
+          const row = Math.floor(i / cols);
+          const x = startX + col * (cardW + gap);
+          const y = startY + row * (cardH + gap);
+          const scale = Math.min(cardW / img.naturalWidth, cardH / img.naturalHeight);
+          const w = img.naturalWidth * scale;
+          const h = img.naturalHeight * scale;
+          const dx = x + (cardW - w) / 2;
+          const dy = y + (cardH - h) / 2;
+          ctx.drawImage(img, dx, dy, w, h);
+          drawCropMarks(ctx, x, y, cardW, cardH);
+        }
       }
+
       pages.push(canvas);
     }
     return pages;
@@ -256,7 +355,7 @@ export function LabelPrintCard() {
           </Select>
           {items.length ? (
             <p className="text-xs text-muted-foreground">
-              {items.length} gambar → {pageCount} halaman A4.
+              {items.length} gambar → {pageCount} halaman A4 ({perPage} per halaman).
             </p>
           ) : null}
         </div>
