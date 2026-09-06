@@ -8,7 +8,6 @@ import {
   FolderClock,
   Settings,
   Wand2,
-  Sparkles,
   LogOut,
   ChevronsUpDown,
 } from "lucide-react";
@@ -38,7 +37,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CreditIndicator } from "@/components/shared/CreditIndicator";
-import { AdSlot } from "@/components/shared/AdSlot";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useEffect, useState } from "react";
 
@@ -109,20 +107,21 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="transition-[width] duration-300 ease-in-out">
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-1 py-1.5">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
-            <Sparkles className="size-5" />
-          </div>
-          <div className="min-w-0 flex-1 transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-sm font-semibold leading-tight">
-              {settings.site_name.split(" ")[0]}
+        <div className="flex items-center gap-2.5 px-1 py-1.5">
+          <div
+            className="size-7 shrink-0 rounded-lg"
+            style={{
+              background:
+                "linear-gradient(135deg, #C6392F 0 50%, #27538F 50% 100%)",
+            }}
+          />
+          <div className="min-w-0 flex-1 font-display transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
+            <p className="truncate text-[13.5px] font-bold leading-tight text-white">
+              {settings.site_name.split(" ").slice(0, 2).join(" ") || "ROY DIGITAL"}
             </p>
-            <p className="truncate text-xs text-sidebar-foreground/70">
-              {settings.site_name.split(" ").slice(1).join(" ") || ""}
+            <p className="truncate text-[9.5px] text-sidebar-foreground/55">
+              {settings.site_name.split(" ").slice(2).join(" ") || "SOLUTION"}
             </p>
-          </div>
-          <div className="transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
-            <CreditIndicator />
           </div>
         </div>
       </SidebarHeader>
@@ -162,7 +161,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       <div className="px-2 pb-2 group-data-[collapsible=icon]:hidden">
-        <AdSlot variant="sidebar" />
+        <CreditIndicator />
       </div>
 
       <SidebarFooter className="border-t border-sidebar-border">

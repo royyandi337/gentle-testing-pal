@@ -38,7 +38,7 @@ const ALLOWED = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 type ToolKind = "enhance" | "remove-bg";
 
 const CHECKER =
-  "repeating-conic-gradient(hsl(var(--muted)) 0% 25%, hsl(var(--background)) 0% 50%) 0 0 / 20px 20px";
+  "repeating-conic-gradient(var(--color-muted) 0% 25%, var(--color-background) 0% 50%) 0 0 / 20px 20px";
 
 function AiToolCard({ kind }: { kind: ToolKind }) {
   const [file, setFile] = useState<File | null>(null);
