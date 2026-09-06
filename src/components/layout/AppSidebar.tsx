@@ -39,9 +39,7 @@ import { toast } from "sonner";
 import { CreditIndicator } from "@/components/shared/CreditIndicator";
 import { AdSlot } from "@/components/shared/AdSlot";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import { useCredits } from "@/hooks/useCredits";
 import { useEffect, useState } from "react";
-import { Crown } from "lucide-react";
 
 export const NAV_GROUPS = [
   {
@@ -75,7 +73,6 @@ export function AppSidebar() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const settings = useSiteSettings();
-  const { tier, remaining } = useCredits();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const email = user?.email ?? "";
@@ -166,11 +163,6 @@ export function AppSidebar() {
 
       <div className="space-y-2 px-2 pb-2 group-data-[collapsible=icon]:hidden">
         <CreditIndicator />
-        {tier === "premium" || remaining === -1 ? (
-          <div className="flex items-center gap-1.5 rounded-lg bg-accent/15 px-2.5 py-1.5 text-xs font-medium text-accent">
-            <Crown className="size-3" /> Premium — tak terbatas
-          </div>
-        ) : null}
         <AdSlot variant="sidebar" />
       </div>
 
