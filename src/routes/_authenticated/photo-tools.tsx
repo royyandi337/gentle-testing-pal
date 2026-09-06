@@ -53,54 +53,58 @@ function PhotoToolsPage() {
   const [rotation, setRotation] = useState(90);
 
   async function process(tool: "resize" | "compress" | "convert" | "rotate") {
-    const file = files[0];
-    if (!file) return;
+    if (!files.length) return;
     setPhase("working");
-    setMessage("Memproses foto...");
+    setMessage(`Memproses ${files.length} foto...`);
     try {
-      const img = await loadImage(await fileToDataUrl(file));
-      let targetW = img.naturalWidth;
-      let targetH = img.naturalHeight;
+      let done = 0;
+      for (const file of files) {
+        const img = await loadImage(await fileToDataUrl(file));
+        let targetW = img.naturalWidth;
+        let targetH = img.naturalHeight;
 
-      if (tool === "resize") {
-        if (mode === "percent") {
-          targetW = Math.max(1, Math.round((img.naturalWidth * percent) / 100));
-          targetH = Math.max(1, Math.round((img.naturalHeight * percent) / 100));
-        } else {
-          targetW = Math.max(1, width);
-          targetH =
-            height > 0
-              ? height
-              : Math.max(1, Math.round((img.naturalHeight / img.naturalWidth) * targetW));
+        if (tool === "resize") {
+          if (mode === "percent") {
+            targetW = Math.max(1, Math.round((img.naturalWidth * percent) / 100));
+            targetH = Math.max(1, Math.round((img.naturalHeight * percent) / 100));
+          } else {
+            targetW = Math.max(1, width);
+            targetH =
+              height > 0
+                ? height
+                : Math.max(1, Math.round((img.naturalHeight / img.naturalWidth) * targetW));
+          }
         }
-      }
 
-      const rotate = tool === "rotate" ? ((rotation % 360) + 360) % 360 : 0;
-      const swap = rotate === 90 || rotate === 270;
-      const canvas = document.createElement("canvas");
-      canvas.width = swap ? targetH : targetW;
-      canvas.height = swap ? targetW : targetH;
-      const ctx = canvas.getContext("2d")!;
-      const type = tool === "convert" ? MIME[format]! : file.type || "image/jpeg";
-      if (type !== "image/png") {
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate((rotate * Math.PI) / 180);
-      ctx.drawImage(img, -targetW / 2, -targetH / 2, targetW, targetH);
+        const rotate = tool === "rotate" ? ((rotation % 360) + 360) % 360 : 0;
+        const swap = rotate === 90 || rotate === 270;
+        const canvas = document.createElement("canvas");
+        canvas.width = swap ? targetH : targetW;
+        canvas.height = swap ? targetW : targetH;
+        const ctx = canvas.getContext("2d")!;
+        const type = tool === "convert" ? MIME[format]! : file.type || "image/jpeg";
+        if (type !== "image/png") {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((rotate * Math.PI) / 180);
+        ctx.drawImage(img, -targetW / 2, -targetH / 2, targetW, targetH);
 
-      const blob = await canvasToBlob(canvas, type, quality / 100);
-      const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg";
-      const fileName = `${file.name.replace(/\.[^.]+$/, "")}-${tool}.${ext}`;
-      downloadBlob(blob, fileName);
-      try {
-        await saveResult({ category: "photo", tool, fileName, blob });
-      } catch {
-        // Riwayat opsional.
+        const blob = await canvasToBlob(canvas, type, quality / 100);
+        const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg";
+        const fileName = `${file.name.replace(/\.[^.]+$/, "")}-${tool}.${ext}`;
+        downloadBlob(blob, fileName);
+        try {
+          await saveResult({ category: "photo", tool, fileName, blob });
+        } catch {
+          // Riwayat opsional.
+        }
+        done += 1;
+        setMessage(`Memproses ${done}/${files.length} foto...`);
       }
       setPhase("done");
-      setMessage(`${fileName} siap diunduh.`);
+      setMessage(`${files.length} foto selesai diproses dan diunduh.`);
     } catch (error) {
       setPhase("error");
       setMessage(error instanceof Error ? error.message : "Proses foto gagal.");
@@ -124,9 +128,10 @@ function PhotoToolsPage() {
         <CardContent>
           <FileDropzone
             accept="image/jpeg,image/png,image/webp"
+            multiple
             files={files}
             onFiles={setFiles}
-            hint="Satu foto per proses"
+            hint="Satu atau beberapa foto sekaligus"
           />
         </CardContent>
       </Card>

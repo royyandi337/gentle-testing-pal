@@ -33,12 +33,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CreditIndicator } from "@/components/shared/CreditIndicator";
 import { AdSlot } from "@/components/shared/AdSlot";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useEffect, useState } from "react";
 
 export const NAV_GROUPS = [
   {
@@ -71,9 +73,28 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user } = useAuth();
   const navigate = useNavigate();
+  const settings = useSiteSettings();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const email = user?.email ?? "";
   const initials = email.slice(0, 2).toUpperCase() || "RD";
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active) return;
+        setAvatarUrl(data?.avatar_url ?? null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   async function signOut() {
     const { error } = await supabase.auth.signOut();
@@ -93,8 +114,12 @@ export function AppSidebar() {
             <Sparkles className="size-5" />
           </div>
           <div className="min-w-0 flex-1 transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-sm font-semibold leading-tight">ROY DIGITAL</p>
-            <p className="truncate text-xs text-sidebar-foreground/70">SOLUTION</p>
+            <p className="truncate text-sm font-semibold leading-tight">
+              {settings.site_name.split(" ")[0]}
+            </p>
+            <p className="truncate text-xs text-sidebar-foreground/70">
+              {settings.site_name.split(" ").slice(1).join(" ") || ""}
+            </p>
           </div>
           <div className="transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
             <CreditIndicator />
@@ -151,6 +176,7 @@ export function AppSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="size-8 rounded-lg">
+                    {avatarUrl ? <AvatarImage src={avatarUrl} alt="Foto profil" /> : null}
                     <AvatarFallback className="rounded-lg bg-sidebar-primary text-xs text-sidebar-primary-foreground">
                       {initials}
                     </AvatarFallback>

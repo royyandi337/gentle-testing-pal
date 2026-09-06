@@ -112,9 +112,11 @@ function PdfToolsPage() {
   const [angle, setAngle] = useState(90);
   const [watermark, setWatermark] = useState("ROY DIGITAL");
   const [protectFile, setProtectFile] = useState<File[]>([]);
+  const [unlockFile, setUnlockFile] = useState<File[]>([]);
   const [pdfPassword, setPdfPassword] = useState("");
   const [unlockPassword, setUnlockPassword] = useState("");
   const [compressTarget, setCompressTarget] = useState(1);
+  const [batchFiles, setBatchFiles] = useState<File[]>([]);
 
   const baseName = (file: File) => file.name.replace(/\.[^.]+$/, "");
 
@@ -132,6 +134,7 @@ function PdfToolsPage() {
           <TabsTrigger value="convert">Konversi</TabsTrigger>
           <TabsTrigger value="manage">Kelola</TabsTrigger>
           <TabsTrigger value="secure">Keamanan</TabsTrigger>
+          <TabsTrigger value="batch">Cetak Batch</TabsTrigger>
         </TabsList>
 
         <TabsContent value="convert" className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -422,8 +425,8 @@ function PdfToolsPage() {
           >
             <FileDropzone
               accept="application/pdf"
-              files={protectFile}
-              onFiles={setProtectFile}
+              files={unlockFile}
+              onFiles={setUnlockFile}
               hint="Satu berkas PDF terkunci"
             />
             <div className="space-y-1.5">
@@ -437,10 +440,10 @@ function PdfToolsPage() {
               />
             </div>
             <Button
-              disabled={!protectFile.length || !unlockPassword || phase === "working"}
+              disabled={!unlockFile.length || !unlockPassword || phase === "working"}
               onClick={() =>
                 run("unlock-pdf", async () => {
-                  const file = protectFile[0]!;
+                  const file = unlockFile[0]!;
                   return [
                     {
                       blob: await unlockPdf(file, unlockPassword),
@@ -492,6 +495,78 @@ function PdfToolsPage() {
             >
               Kompres ke Target
             </Button>
+          </ToolCard>
+        </TabsContent>
+
+        <TabsContent value="batch" className="mt-4">
+          <ToolCard
+            title="Cetak PDF Batch"
+            description="Unggah beberapa file PDF berbeda, gabungkan dan cetak semuanya sekaligus dalam satu proses."
+          >
+            <FileDropzone
+              accept="application/pdf"
+              multiple
+              files={batchFiles}
+              onFiles={setBatchFiles}
+              hint="Pilih dua atau lebih file PDF"
+            />
+            {batchFiles.length > 0 ? (
+              <div className="space-y-1">
+                <p className="text-sm font-medium">
+                  {batchFiles.length} file siap diproses:
+                </p>
+                <ol className="list-inside list-decimal space-y-0.5 text-sm text-muted-foreground">
+                  {batchFiles.map((f, i) => (
+                    <li key={i} className="truncate">
+                      {f.name} ({(f.size / 1024).toFixed(0)} KB)
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={batchFiles.length < 2 || phase === "working"}
+                onClick={() =>
+                  run("batch-merge-print", async () => {
+                    setProgress(0);
+                    setMessage(`Menggabungkan ${batchFiles.length} PDF...`);
+                    const blob = await mergePdfs(batchFiles);
+                    setProgress(100);
+                    return [
+                      { blob, fileName: "cetak-batch-gabungan.pdf" },
+                    ];
+                  })
+                }
+              >
+                Gabung & Cetak Semua
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={!batchFiles.length || phase === "working"}
+                onClick={() =>
+                  run("batch-print", async () => {
+                    setProgress(0);
+                    const out: { blob: Blob; fileName: string }[] = [];
+                    for (let i = 0; i < batchFiles.length; i++) {
+                      setProgress(Math.round(((i + 1) / batchFiles.length) * 100));
+                      setMessage(`Memproses ${i + 1}/${batchFiles.length}: ${batchFiles[i]!.name}`);
+                      out.push({
+                        blob: await compressPdf(batchFiles[i]!),
+                        fileName: `${baseName(batchFiles[i]!)}-cetak.pdf`,
+                      });
+                    }
+                    return out;
+                  })
+                }
+              >
+                Cetak Per File
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              "Gabung & Cetak Semua" menggabungkan semua PDF menjadi satu file lalu mengunduhnya.
+              "Cetak Per File" memproses setiap PDF secara terpisah dan mengunduhnya satu per satu.
+            </p>
           </ToolCard>
         </TabsContent>
       </Tabs>
