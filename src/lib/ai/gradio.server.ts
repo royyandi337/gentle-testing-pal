@@ -133,24 +133,30 @@ export async function callGradio(
 }
 
 /** Reads and validates the uploaded image from a multipart request. */
-export async function readImageUpload(request: Request): Promise<string> {
+export async function readImageUpload(request: Request): Promise<File> {
   return imageFromForm(await request.formData());
 }
 
-export async function imageFromForm(form: FormData): Promise<string> {
+export async function imageFromForm(form: FormData): Promise<File> {
   const file = form.get("image");
   if (!(file instanceof File)) throw new Error("File gambar tidak ditemukan pada permintaan.");
   if (file.size > MAX_UPLOAD_BYTES) throw new Error("Ukuran file melebihi 10MB.");
   if (!ALLOWED_MIME.includes(file.type)) {
     throw new Error("Format tidak didukung. Gunakan JPG, PNG, atau WEBP.");
   }
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = "";
-  const CHUNK = 8192;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return `data:${file.type};base64,${btoa(binary)}`;
+  return file;
+}
+
+/** Uploads the image to the Space first, then returns its FileData payload. */
+export async function uploadImagePayload(base: string, file: File) {
+  const ext = file.type.includes("png")
+    ? "png"
+    : file.type.includes("webp")
+      ? "webp"
+      : "jpg";
+  const named = file.name && /\.[a-z0-9]+$/i.test(file.name) ? file.name : `input.${ext}`;
+  const path = await uploadToSpace(base, new File([file], named, { type: file.type }));
+  return fileData(path);
 }
 
 export const MAX_PDF_BYTES = 10 * 1024 * 1024;
