@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, useRef, type ReactNode } from "react";
+import { useMemo, useState, useRef, useCallback, type ReactNode } from "react";
 import {
   FileEdit,
   Search,
@@ -23,6 +23,9 @@ import {
   GraduationCap,
   Building2,
   PenLine,
+  Upload,
+  FileUp,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/AppShell";
@@ -264,6 +267,116 @@ function saveCustomTemplates(templates: Template[]) {
   localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(templates));
 }
 
+const ACCEPTED_UPLOAD_EXTS = [".docx", ".doc", ".pdf", ".txt"];
+const ACCEPTED_UPLOAD_TYPES = [
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+  "application/pdf",
+  "text/plain",
+];
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Extract plain text from an uploaded document.
+ * - .txt: read as UTF-8
+ * - .docx/.doc: use mammoth.extractRawText (dynamic import)
+ * - .pdf: use pdfjs-dist to extract text content (dynamic import)
+ */
+async function extractTextFromFile(file: File): Promise<string> {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".txt") || file.type === "text/plain") {
+    return await file.text();
+  }
+  if (name.endsWith(".docx") || name.endsWith(".doc")) {
+    const arrayBuffer = await file.arrayBuffer();
+    const mammoth = await import("mammoth");
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value;
+  }
+  if (name.endsWith(".pdf") || file.type === "application/pdf") {
+    const pdfjs = await import("pdfjs-dist");
+    const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+    const data = new Uint8Array(await file.arrayBuffer());
+    const doc = await pdfjs.getDocument({ data }).promise;
+    const parts: string[] = [];
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items
+        .map((item: any) => (typeof item.str === "string" ? item.str : ""))
+        .join(" ");
+      parts.push(pageText);
+    }
+    return parts.join("\n\n");
+  }
+  throw new Error("Format file tidak didukung.");
+}
+
+/**
+ * Detect blank-fill patterns in extracted text and convert them to template fields.
+ * Patterns: underscores (____), dot-leader (....), square brackets ([...]),
+ * and parenthesised placeholders like (nama) or (isi nama).
+ */
+function detectBlankFields(text: string): {
+  fields: TemplateField[];
+  body: string;
+} {
+  const fields: TemplateField[] = [];
+  let counter = 0;
+  let body = text;
+
+  // Convert plain text to simple HTML paragraphs first
+  body = body
+    .split(/\n\s*\n/)
+    .map((para) => `<p>${para.replace(/\n/g, "<br>")}</p>`)
+    .join("");
+
+  // Pattern 1: underscores (min 3)
+  body = body.replace(/_{3,}/g, () => {
+    counter++;
+    const key = `field_${counter}`;
+    fields.push({ key, label: `Kolom ${counter}`, placeholder: "isi di sini" });
+    return `{{${key}}}`;
+  });
+
+  // Pattern 2: dot-leaders (min 3 dots, not sentence-ending)
+  body = body.replace(/\.{3,}/g, () => {
+    counter++;
+    const key = `field_${counter}`;
+    fields.push({ key, label: `Kolom ${counter}`, placeholder: "isi di sini" });
+    return `{{${key}}}`;
+  });
+
+  // Pattern 3: square-bracket placeholders [isi nama], [____], etc.
+  body = body.replace(/\[([^\]]{1,60})\]/g, (_match, inner: string) => {
+    const trimmed = inner.trim();
+    // Skip if it looks like a formatting instruction, not a blank
+    if (/^_+$|^\.+$/.test(trimmed)) {
+      counter++;
+      const key = `field_${counter}`;
+      fields.push({ key, label: `Kolom ${counter}`, placeholder: "isi di sini" });
+      return `{{${key}}}`;
+    }
+    counter++;
+    const key = `field_${counter}`;
+    const label = trimmed.length > 40 ? `Kolom ${counter}` : trimmed;
+    fields.push({ key, label, placeholder: trimmed });
+    return `{{${key}}}`;
+  });
+
+  // Pattern 4: parenthesised placeholders (nama), (isi ... )
+  body = body.replace(/\((nama[^)]*|isi[^)]*|tempat[^)]*|tanggal[^)]*|alamat[^)]*|tanda tangan[^)]*)\)/gi, (_match, inner: string) => {
+    counter++;
+    const key = `field_${counter}`;
+    const trimmed = inner.trim();
+    fields.push({ key, label: trimmed.charAt(0).toUpperCase() + trimmed.slice(1), placeholder: trimmed });
+    return `{{${key}}}`;
+  });
+
+  return { fields, body };
+}
+
 function renderPreview(body: string, fields: TemplateField[], formData: Record<string, string>): string {
   let html = body;
   for (const f of fields) {
@@ -297,6 +410,11 @@ function TemplatSuratPage() {
   const [builderFields, setBuilderFields] = useState<TemplateField[]>([]);
   const [builderFieldCounter, setBuilderFieldCounter] = useState(0);
   const builderCanvasRef = useRef<HTMLDivElement>(null);
+
+  // Upload state
+  const [uploadDragOver, setUploadDragOver] = useState(false);
+  const [uploadProcessing, setUploadProcessing] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   const allTemplates = useMemo(() => [...BUILTIN_TEMPLATES, ...customTemplates], [customTemplates]);
 
@@ -391,6 +509,67 @@ function TemplatSuratPage() {
 
   function cancelBuilder() {
     setView("gallery");
+  }
+
+  // ===== UPLOAD FLOW =====
+  const handleUploadFile = useCallback(async (file: File) => {
+    const name = file.name.toLowerCase();
+    const extOk = ACCEPTED_UPLOAD_EXTS.some((ext) => name.endsWith(ext));
+    const typeOk = ACCEPTED_UPLOAD_TYPES.includes(file.type);
+    if (!extOk && !typeOk) {
+      toast.error("Format tidak didukung. Gunakan .docx, .doc, .pdf, atau .txt");
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      toast.error("Ukuran file melebihi 10MB.");
+      return;
+    }
+
+    setUploadProcessing(true);
+    try {
+      const text = await extractTextFromFile(file);
+      if (!text.trim()) {
+        toast.error("Tidak ada teks yang bisa dibaca dari file ini.");
+        return;
+      }
+
+      const { fields, body } = detectBlankFields(text);
+      const templateName = file.name.replace(/\.[^.]+$/, "");
+      const newTemplate: Template = {
+        id: "custom-" + Date.now(),
+        name: templateName,
+        desc: `Diunggah dari ${file.name}. ${fields.length} kolom isian terdeteksi otomatis.`,
+        category: "custom",
+        icon: <FileUp className="size-5" />,
+        fields: fields.length > 0 ? fields : [{ key: "field_1", label: "Kolom 1", placeholder: "isi di sini" }],
+        body: fields.length > 0 ? body : `<p>${text.replace(/\n\s*\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`,
+        custom: true,
+      };
+
+      const updated = [...customTemplates, newTemplate];
+      setCustomTemplates(updated);
+      saveCustomTemplates(updated);
+      toast.success(`Templat "${templateName}" ditambahkan. ${fields.length} kolom isian terdeteksi otomatis.`);
+      selectTemplate(newTemplate);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Gagal memproses file.";
+      toast.error(msg);
+    } finally {
+      setUploadProcessing(false);
+    }
+  }, [customTemplates]);
+
+  function handleUploadDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setUploadDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleUploadFile(file);
+  }
+
+  function handleUploadInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleUploadFile(file);
+    e.target.value = "";
   }
 
   function markSelectionAsField() {
@@ -747,6 +926,58 @@ function TemplatSuratPage() {
         icon={FileEdit}
       />
 
+      {/* ===== UPLOAD ZONE — Cara 1: Upload templat sendiri ===== */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setUploadDragOver(true); }}
+        onDragLeave={() => setUploadDragOver(false)}
+        onDrop={handleUploadDrop}
+        className={cn(
+          "mb-5 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-7 text-center transition-all sm:p-9",
+          uploadDragOver
+            ? "border-primary bg-primary/5 scale-[1.01]"
+            : "border-border bg-paper-dim hover:border-navy-700",
+        )}
+      >
+        <input
+          ref={uploadInputRef}
+          type="file"
+          accept={ACCEPTED_UPLOAD_EXTS.join(",")}
+          onChange={handleUploadInput}
+          className="hidden"
+        />
+        <div className="flex size-12 items-center justify-center rounded-xl bg-navy-800">
+          {uploadProcessing ? (
+            <Loader2 className="size-6 animate-spin text-white" />
+          ) : (
+            <Upload className="size-6 text-white" />
+          )}
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-navy-800">
+            {uploadProcessing ? "Memproses templat..." : "Tarik & lepas templat di sini"}
+          </h3>
+          <p className="mt-0.5 text-xs text-slate">
+            Unggah file surat — sistem otomatis mendeteksi bagian kosong dan mengubahnya jadi kolom isian.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => uploadInputRef.current?.click()}
+            disabled={uploadProcessing}
+          >
+            <FileUp className="size-4" /> Pilih File
+          </Button>
+          <div className="flex flex-wrap gap-1.5">
+            {ACCEPTED_UPLOAD_EXTS.map((ext) => (
+              <Badge key={ext} variant="secondary" className="text-[10px] font-mono">{ext}</Badge>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ===== BUILDER ZONE — Cara 2: Buat templat dari nol ===== */}
       {showAddNew && (
         <Card className="mb-5 border-dashed border-navy-700 bg-paper-dim">
           <CardContent className="flex items-center gap-4 p-5">
