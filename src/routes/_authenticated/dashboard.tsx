@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   Camera,
   FileText,
@@ -14,9 +15,11 @@ import {
   Wand2,
   Printer,
   ArrowRight,
+  QrCode,
 } from "lucide-react";
 import { useCredits } from "@/hooks/useCredits";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { listHistory, type HistoryRow } from "@/lib/history";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -46,11 +49,13 @@ const FLOW_CHIPS = [
 ];
 
 const CATEGORIES = [
-  { to: "/pas-foto", icon: Camera, title: "Pas Foto", desc: "Upload sampai siap cetak, lengkap dengan editor dan AI." },
+  { to: "/pas-foto", icon: Camera, title: "Pas Foto", desc: "Upload sampai siap cetak, lengkap dengan editor dan AI.", big: true },
+  { to: "/ai-tools", icon: Wand2, title: "AI Tools", desc: "Enhance, remove background, dan auto-crop otomatis." },
   { to: "/pdf-tools", icon: FileText, title: "PDF Tools", desc: "Convert, gabung, kompres, dan kelola PDF." },
   { to: "/word-tools", icon: FileType2, title: "Word Tools", desc: "Konversi dokumen Word tanpa merusak banyak format." },
   { to: "/templat-surat", icon: FileEdit, title: "Templat Surat", desc: "Pilih templat, isi bagian kosong, langsung jadi." },
   { to: "/photo-tools", icon: Images, title: "Photo Tools", desc: "Resize, kompres, convert, dan optimalkan gambar." },
+  { to: "/qr-code", icon: QrCode, title: "QR Code", desc: "Buat QR code custom untuk URL, teks, WiFi, dan lainnya." },
 ] as const;
 
 const TIER_BENEFITS: Record<string, string> = {
@@ -62,6 +67,11 @@ const TIER_BENEFITS: Record<string, string> = {
 function Dashboard() {
   const settings = useSiteSettings();
   const { tier, remaining, dailyLimit, loading } = useCredits();
+  const { data: recentItems } = useQuery({
+    queryKey: ["dashboard-history"],
+    queryFn: listHistory,
+    staleTime: 30_000,
+  });
 
   const isPremium = tier === "premium" || remaining === -1;
   const creditLabel = isPremium ? "Tak terbatas" : loading ? "…" : `${remaining} / ${dailyLimit}`;
@@ -106,7 +116,7 @@ function Dashboard() {
       </section>
 
       {/* Category cards */}
-      <div className="mb-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {CATEGORIES.map((c) => (
           <Link key={c.title} to={c.to} className="group">
             <div className="h-full rounded-2xl border border-border bg-card p-5 transition-colors group-hover:border-[#0E1B30] group-hover:shadow-sm">
@@ -122,23 +132,40 @@ function Dashboard() {
 
       {/* Lower panels */}
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        {/* Recent activity — empty state */}
+        {/* Recent activity */}
         <div className="rounded-2xl border border-border bg-card p-6">
           <h4 className="mb-4 text-[14.5px] font-semibold text-foreground">Aktivitas terbaru</h4>
-          <div className="flex flex-col items-center px-4 py-7 text-center">
-            <div className="mb-3.5 flex size-10 items-center justify-center rounded-full bg-paper-dim">
-              <Clock className="size-4 text-slate-light" strokeWidth={1.8} />
+          {recentItems && recentItems.length > 0 ? (
+            <div className="divide-y divide-border">
+              {recentItems.slice(0, 5).map((item: HistoryRow) => (
+                <div key={item.id} className="flex items-center gap-3 py-2.5">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-dim">
+                    <FileText className="size-3.5 text-slate" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-medium text-foreground">{item.name}</p>
+                    <p className="text-[11.5px] text-slate-light">{item.tool} • {new Date(item.created_at).toLocaleDateString("id-ID")}</p>
+                  </div>
+                  <Link to="/riwayat" className="text-[11.5px] font-medium text-primary hover:underline">Lihat</Link>
+                </div>
+              ))}
             </div>
-            <strong className="text-[13.5px] font-semibold text-slate">Belum ada aktivitas</strong>
-            <span className="mt-1 text-[12.5px] text-slate-light">Riwayat proses akan muncul di sini</span>
-            <Link
-              to="/pas-foto"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3.5 py-1.5 text-[12.5px] font-medium text-foreground transition hover:bg-paper-dim"
-            >
-              Coba Pas Foto sekarang
-              <ArrowRight className="size-3" strokeWidth={2} />
-            </Link>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center px-4 py-7 text-center">
+              <div className="mb-3.5 flex size-10 items-center justify-center rounded-full bg-paper-dim">
+                <Clock className="size-4 text-slate-light" strokeWidth={1.8} />
+              </div>
+              <strong className="text-[13.5px] font-semibold text-slate">Belum ada aktivitas</strong>
+              <span className="mt-1 text-[12.5px] text-slate-light">Riwayat proses akan muncul di sini</span>
+              <Link
+                to="/pas-foto"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3.5 py-1.5 text-[12.5px] font-medium text-foreground transition hover:bg-paper-dim"
+              >
+                Coba Pas Foto sekarang
+                <ArrowRight className="size-3" strokeWidth={2} />
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Account status */}

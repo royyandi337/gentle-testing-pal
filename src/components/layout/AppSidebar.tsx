@@ -12,6 +12,7 @@ import {
   ChevronsUpDown,
   FileEdit,
   Crown,
+  QrCode,
 } from "lucide-react";
 import {
   Sidebar,
@@ -63,6 +64,7 @@ export const NAV_GROUPS = [
       { to: "/pdf-tools", label: "PDF Tools", icon: FileText },
       { to: "/word-tools", label: "Word Tools", icon: FileType2 },
       { to: "/templat-surat", label: "Templat Surat", icon: FileEdit },
+      { to: "/qr-code", label: "QR Code", icon: QrCode },
     ],
   },
   {
