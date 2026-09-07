@@ -6,6 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { BrandMark } from "@/components/shared/BrandMark";
 
+const TITLE = "Masuk atau Daftar — ROY DIGITAL SOLUTION";
+const DESCRIPTION =
+  "Masuk ke akun ROY DIGITAL SOLUTION untuk mengakses Pas Foto, PDF Tools, Word Tools, dan Photo Tools.";
+
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [

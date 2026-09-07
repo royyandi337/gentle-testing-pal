@@ -17,6 +17,10 @@ import {
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { BrandMark } from "@/components/shared/BrandMark";
 
+const TITLE = "ROY DIGITAL SOLUTION — Pas Foto, PDF & Photo Tools Online";
+const DESCRIPTION =
+  "Satu tempat untuk bikin pas foto siap cetak, rapikan berkas PDF & Word, dan olah foto — lengkap dengan bantuan AI, dari upload sampai siap dicetak.";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
