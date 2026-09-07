@@ -10,6 +10,9 @@ import {
   Scissors,
   Wand2,
   Printer,
+  Sparkles,
+  QrCode,
+  FileEdit,
 } from "lucide-react";
 
 const TITLE = "ROY DIGITAL SOLUTION — Pas Foto, PDF & Photo Tools Online";
@@ -42,6 +45,9 @@ const FEATURES = [
   { icon: FileText, title: "PDF Tools", desc: "Convert, gabung, kompres, dan lindungi PDF tanpa install aplikasi tambahan." },
   { icon: FileType2, title: "Word Tools", desc: "Kelola dan konversi dokumen Word tanpa merusak format aslinya." },
   { icon: Images, title: "Photo Tools", desc: "Resize, kompres, convert, kolase, dan cetak label — sekali jalan, banyak file." },
+  { icon: Sparkles, title: "AI Tools", desc: "Enhance image dan hapus background otomatis dengan kecerdasan buatan." },
+  { icon: QrCode, title: "QR Code", desc: "Buat QR code untuk URL, teks, email, telepon, dan WiFi dalam hitungan detik." },
+  { icon: FileEdit, title: "Templat Surat", desc: "Pilih templat, isi bagian kosong, langsung jadi — segera hadir." },
 ];
 
 const PRICING = [
@@ -163,7 +169,7 @@ function Landing() {
             </div>
             <div className="mt-9 flex max-w-[480px] gap-7 border-t border-border pt-6">
               {[
-                ["4 kategori", "alat foto & dokumen"],
+                ["7 alat", "foto & dokumen dalam satu akun"],
                 ["10 kredit", "AI gratis / hari di trial"],
                 ["0 rupiah", "untuk mulai mencoba"],
               ].map(([strong, span]) => (
@@ -210,7 +216,7 @@ function Landing() {
       {/* Features */}
       <section id="fitur" className="mx-auto max-w-[1180px] px-4 py-14 md:px-8 md:py-22">
         <div className="mb-12 max-w-[560px]">
-          <h2 className="text-3xl font-bold text-foreground md:text-[34px]">Empat alat, satu akun</h2>
+          <h2 className="text-3xl font-bold text-foreground md:text-[34px]">Tujuh alat, satu akun</h2>
           <p className="mt-3.5 text-base leading-relaxed text-slate">Setiap kategori dibuat untuk pekerjaan yang sering berulang — bukan fitur tempelan.</p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -337,7 +343,10 @@ function Landing() {
               <a href="#fitur" className="mb-2.5 block text-[13.8px] text-slate hover:text-foreground">Pas Foto</a>
               <a href="#fitur" className="mb-2.5 block text-[13.8px] text-slate hover:text-foreground">PDF Tools</a>
               <a href="#fitur" className="mb-2.5 block text-[13.8px] text-slate hover:text-foreground">Word Tools</a>
-              <a href="#fitur" className="block text-[13.8px] text-slate hover:text-foreground">Photo Tools</a>
+              <a href="#fitur" className="mb-2.5 block text-[13.8px] text-slate hover:text-foreground">Photo Tools</a>
+              <a href="#fitur" className="mb-2.5 block text-[13.8px] text-slate hover:text-foreground">AI Tools</a>
+              <a href="#fitur" className="mb-2.5 block text-[13.8px] text-slate hover:text-foreground">QR Code</a>
+              <a href="#fitur" className="block text-[13.8px] text-slate hover:text-foreground">Templat Surat</a>
             </div>
             <div>
               <h4 className="mb-3.5 text-[13px] text-slate-light">Akun</h4>
