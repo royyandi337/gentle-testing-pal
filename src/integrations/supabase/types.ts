@@ -167,25 +167,46 @@ export type Database = {
       }
       site_settings: {
         Row: {
+          accent_color: string
           id: boolean
+          logo_data_url: string | null
+          manual_payment_info: string
+          payment_gateway: string
+          payment_mode: string
           site_address: string
           site_name: string
+          site_name_main: string
+          site_name_sub: string
           site_tagline: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          accent_color?: string
           id?: boolean
+          logo_data_url?: string | null
+          manual_payment_info?: string
+          payment_gateway?: string
+          payment_mode?: string
           site_address?: string
           site_name?: string
+          site_name_main?: string
+          site_name_sub?: string
           site_tagline?: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          accent_color?: string
           id?: boolean
+          logo_data_url?: string | null
+          manual_payment_info?: string
+          payment_gateway?: string
+          payment_mode?: string
           site_address?: string
           site_name?: string
+          site_name_main?: string
+          site_name_sub?: string
           site_tagline?: string
           updated_at?: string
           updated_by?: string | null
@@ -266,6 +287,7 @@ export type Database = {
           email: string
           last_sign_in_at: string
           role: string
+          tier: string
           user_id: string
         }[]
       }
