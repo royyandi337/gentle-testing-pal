@@ -46,15 +46,15 @@ const QR_TYPES: { value: QrType; label: string; icon: typeof Link2 }[] = [
 function buildContent(type: QrType, data: Record<string, string>): string {
   switch (type) {
     case "url":
-      return data.url || "";
+      return data["url"] || "";
     case "text":
-      return data.text || "";
+      return data["text"] || "";
     case "email":
-      return `mailto:${data.email || ""}${data.subject ? `?subject=${encodeURIComponent(data.subject)}` : ""}`;
+      return `mailto:${data["email"] || ""}${data["subject"] ? `?subject=${encodeURIComponent(data["subject"])}` : ""}`;
     case "phone":
-      return `tel:${data.phone || ""}`;
+      return `tel:${data["phone"] || ""}`;
     case "wifi":
-      return `WIFI:T:${data.wifiSecurity || "WPA"};S:${data.wifiSsid || ""};P:${data.wifiPassword || ""};;`;
+      return `WIFI:T:${data["wifiSecurity"] || "WPA"};S:${data["wifiSsid"] || ""};P:${data["wifiPassword"] || ""};;`;
     default:
       return "";
   }
@@ -177,7 +177,7 @@ function QrCodePage() {
                   <Label htmlFor="qr-url">URL</Label>
                   <Input
                     id="qr-url"
-                    value={data.url ?? ""}
+                    value={data["url"] ?? ""}
                     onChange={(e) => update("url", e.target.value)}
                     placeholder="https://contoh.com"
                   />
@@ -188,7 +188,7 @@ function QrCodePage() {
                   <Label htmlFor="qr-text">Teks</Label>
                   <Textarea
                     id="qr-text"
-                    value={data.text ?? ""}
+                    value={data["text"] ?? ""}
                     onChange={(e) => update("text", e.target.value)}
                     placeholder="Tulis teks apa pun..."
                     rows={4}
@@ -202,7 +202,7 @@ function QrCodePage() {
                     <Input
                       id="qr-email"
                       type="email"
-                      value={data.email ?? ""}
+                      value={data["email"] ?? ""}
                       onChange={(e) => update("email", e.target.value)}
                       placeholder="nama@contoh.com"
                     />
@@ -211,7 +211,7 @@ function QrCodePage() {
                     <Label htmlFor="qr-subject">Subjek (opsional)</Label>
                     <Input
                       id="qr-subject"
-                      value={data.subject ?? ""}
+                      value={data["subject"] ?? ""}
                       onChange={(e) => update("subject", e.target.value)}
                       placeholder="Subjek email"
                     />
@@ -224,7 +224,7 @@ function QrCodePage() {
                   <Input
                     id="qr-phone"
                     type="tel"
-                    value={data.phone ?? ""}
+                    value={data["phone"] ?? ""}
                     onChange={(e) => update("phone", e.target.value)}
                     placeholder="+6281234567890"
                   />
@@ -236,7 +236,7 @@ function QrCodePage() {
                     <Label htmlFor="qr-ssid">Nama WiFi (SSID)</Label>
                     <Input
                       id="qr-ssid"
-                      value={data.wifiSsid ?? ""}
+                      value={data["wifiSsid"] ?? ""}
                       onChange={(e) => update("wifiSsid", e.target.value)}
                       placeholder="Nama WiFi"
                     />
@@ -246,7 +246,7 @@ function QrCodePage() {
                     <Input
                       id="qr-wifi-pass"
                       type="password"
-                      value={data.wifiPassword ?? ""}
+                      value={data["wifiPassword"] ?? ""}
                       onChange={(e) => update("wifiPassword", e.target.value)}
                       placeholder="Password WiFi"
                     />
@@ -254,7 +254,7 @@ function QrCodePage() {
                   <div className="space-y-1.5">
                     <Label>Keamanan</Label>
                     <Select
-                      value={data.wifiSecurity ?? "WPA"}
+                      value={data["wifiSecurity"] ?? "WPA"}
                       onValueChange={(v) => update("wifiSecurity", v)}
                     >
                       <SelectTrigger className="w-full">

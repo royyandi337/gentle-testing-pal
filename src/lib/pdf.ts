@@ -131,7 +131,7 @@ export async function protectPdf(file: File, userPassword: string, ownerPassword
   const bytes = await doc.save({
     userPassword,
     ownerPassword: ownerPassword || userPassword,
-  });
+  } as any);
   return toBlob(bytes);
 }
 
@@ -141,7 +141,7 @@ export async function unlockPdf(file: File, password: string) {
   const doc = await PDFDocument.load(bytes, {
     ignoreEncryption: true,
     password,
-  });
+  } as any);
   const saved = await doc.save();
   return toBlob(saved);
 }

@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { fileToDataUrl } from "@/lib/image";
 import { saveResult } from "@/lib/history";
 import { isCreditError, CreditExhaustedAlert } from "@/components/shared/CreditExhaustedAlert";
+import { supabase } from "@/integrations/supabase/client";
+
 
 export const Route = createFileRoute("/_authenticated/ai-tools")({
   head: () => ({
@@ -55,7 +57,7 @@ async function autoCropImage(file: File): Promise<string> {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
-      const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+      const r = data[i]!, g = data[i + 1]!, b = data[i + 2]!, a = data[i + 3]!;
       if (a < 10) continue;
       const brightness = (r + g + b) / 3;
       if (brightness < 245) {
@@ -139,7 +141,13 @@ function AiToolCard({ kind }: { kind: ToolKind }) {
       } else {
         const form = new FormData();
         form.append("image", file);
-        const res = await fetch(endpoint, { method: "POST", body: form });
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        const res = await fetch(endpoint, {
+          method: "POST",
+          body: form,
+          ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+        });
         const payload = (await res.json().catch(() => ({}))) as { image?: string; error?: string };
         if (!res.ok || !payload.image) {
           throw new Error(payload.error ?? `Proses AI gagal (${res.status}).`);

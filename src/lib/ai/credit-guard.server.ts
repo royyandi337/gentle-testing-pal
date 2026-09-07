@@ -52,7 +52,9 @@ export async function checkCredit(
 ): Promise<{ ok: boolean; error?: string }> {
   const { data: remaining, error: remErr } = await supabase.rpc("get_remaining_credits");
   if (remErr) return { ok: false, error: "Gagal memeriksa credit." };
-  if ((remaining as number) <= 0) {
+  const remainingCredits = remaining as number;
+  // -1 means unlimited (premium tier) — must never be treated as "insufficient".
+  if (remainingCredits !== -1 && remainingCredits <= 0) {
     return { ok: false, error: "Insufficient credits" };
   }
   return { ok: true };

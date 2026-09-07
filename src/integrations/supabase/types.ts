@@ -109,6 +109,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          tier: Database["public"]["Enums"]["app_tier"]
           updated_at: string
         }
         Insert: {
@@ -117,6 +118,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          tier?: Database["public"]["Enums"]["app_tier"]
           updated_at?: string
         }
         Update: {
@@ -125,6 +127,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          tier?: Database["public"]["Enums"]["app_tier"]
           updated_at?: string
         }
         Relationships: []
@@ -254,6 +257,33 @@ export type Database = {
           },
         ]
       }
+      usage_credits: {
+        Row: {
+          created_at: string
+          credits_used: number
+          date: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits_used?: number
+          date?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          credits_used?: number
+          date?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -280,6 +310,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      deduct_credit: { Args: { amount?: number }; Returns: number }
       get_all_users: {
         Args: never
         Returns: {
@@ -291,11 +322,13 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_remaining_credits: { Args: never; Returns: number }
     }
     Enums: {
       ai_job_status: "queued" | "processing" | "completed" | "failed"
       ai_job_type: "background_removal" | "image_enhancement" | "auto_photo"
       app_role: "owner" | "admin" | "user"
+      app_tier: "trial" | "regular" | "premium"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -426,6 +459,7 @@ export const Constants = {
       ai_job_status: ["queued", "processing", "completed", "failed"],
       ai_job_type: ["background_removal", "image_enhancement", "auto_photo"],
       app_role: ["owner", "admin", "user"],
+      app_tier: ["trial", "regular", "premium"],
     },
   },
 } as const
