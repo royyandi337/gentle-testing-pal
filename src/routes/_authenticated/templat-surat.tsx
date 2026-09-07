@@ -1,6 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useRef, type ReactNode } from "react";
-import { FileEdit, Search, Plus, ArrowLeft, Download, FileText, Pencil, Trash2, Copy } from "lucide-react";
+import {
+  FileEdit,
+  Search,
+  Plus,
+  ArrowLeft,
+  ArrowRight,
+  Download,
+  FileText,
+  Pencil,
+  Trash2,
+  Copy,
+  Check,
+  Sparkles,
+  FileType2,
+  Mail,
+  Shield,
+  UserCog,
+  Calendar,
+  Home,
+  Briefcase,
+  GraduationCap,
+  Building2,
+  PenLine,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,13 +56,13 @@ type Template = {
 };
 
 const CATEGORIES = [
-  { id: "semua", label: "Semua" },
-  { id: "kerja", label: "Kerja" },
-  { id: "kependudukan", label: "Kependudukan" },
-  { id: "sekolah", label: "Sekolah" },
-  { id: "rtrw", label: "RT/RW" },
-  { id: "bisnis", label: "Bisnis" },
-  { id: "custom", label: "Templat Kamu" },
+  { id: "semua", label: "Semua", icon: Search },
+  { id: "kerja", label: "Kerja", icon: Briefcase },
+  { id: "kependudukan", label: "Kependudukan", icon: Home },
+  { id: "sekolah", label: "Sekolah", icon: GraduationCap },
+  { id: "rtrw", label: "RT/RW", icon: Building2 },
+  { id: "bisnis", label: "Bisnis", icon: Shield },
+  { id: "custom", label: "Templat Kamu", icon: PenLine },
 ];
 
 const BUILTIN_TEMPLATES: Template[] = [
@@ -48,7 +71,7 @@ const BUILTIN_TEMPLATES: Template[] = [
     name: "Surat Lamaran Kerja",
     desc: "Format standar melamar pekerjaan ke sebuah perusahaan.",
     category: "kerja",
-    icon: <FileText className="size-5" />,
+    icon: <Briefcase className="size-5" />,
     fields: [
       { key: "kota", label: "Kota Asal Surat", placeholder: "Bogor" },
       { key: "tanggal", label: "Tanggal Surat", placeholder: "7 September 2026" },
@@ -82,7 +105,7 @@ const BUILTIN_TEMPLATES: Template[] = [
     name: "Surat Kuasa",
     desc: "Memberi kuasa kepada orang lain untuk mengurus suatu keperluan.",
     category: "bisnis",
-    icon: <FileText className="size-5" />,
+    icon: <Shield className="size-5" />,
     fields: [
       { key: "nama_pemberi", label: "Nama Pemberi Kuasa", placeholder: "Nama lengkap" },
       { key: "nik_pemberi", label: "NIK Pemberi Kuasa", placeholder: "32xxxxxxxxxxxxxx" },
@@ -113,7 +136,7 @@ const BUILTIN_TEMPLATES: Template[] = [
     name: "Surat Izin Tidak Masuk",
     desc: "Izin tidak masuk kerja atau sekolah kepada atasan/wali kelas.",
     category: "sekolah",
-    icon: <FileText className="size-5" />,
+    icon: <GraduationCap className="size-5" />,
     fields: [
       { key: "tujuan", label: "Ditujukan Kepada", placeholder: "Bapak/Ibu Kepala Sekolah" },
       { key: "nama", label: "Nama", placeholder: "Nama lengkap" },
@@ -140,7 +163,7 @@ const BUILTIN_TEMPLATES: Template[] = [
     name: "Surat Keterangan Domisili",
     desc: "Keterangan tempat tinggal untuk keperluan administrasi.",
     category: "kependudukan",
-    icon: <FileText className="size-5" />,
+    icon: <Home className="size-5" />,
     fields: [
       { key: "nama", label: "Nama Lengkap", placeholder: "Nama lengkap" },
       { key: "nik", label: "NIK", placeholder: "32xxxxxxxxxxxxxx" },
@@ -198,7 +221,7 @@ const BUILTIN_TEMPLATES: Template[] = [
     name: "Surat Undangan Resmi",
     desc: "Mengundang seseorang atau instansi untuk hadir pada suatu acara.",
     category: "rtrw",
-    icon: <FileText className="size-5" />,
+    icon: <Calendar className="size-5" />,
     fields: [
       { key: "tujuan", label: "Ditujukan Kepada", placeholder: "Bapak/Ibu Wali Kelas" },
       { key: "acara", label: "Nama Acara", placeholder: "Rapat Tahunan Warga" },
@@ -253,6 +276,12 @@ function renderPreview(body: string, fields: TemplateField[], formData: Record<s
   return html;
 }
 
+const WIZARD_STEPS = [
+  { id: 1, label: "Pilih Templat" },
+  { id: 2, label: "Isi Data" },
+  { id: 3, label: "Selesai" },
+] as const;
+
 function TemplatSuratPage() {
   const [customTemplates, setCustomTemplates] = useState<Template[]>(() => loadCustomTemplates());
   const [view, setView] = useState<"gallery" | "editor" | "builder">("gallery");
@@ -260,6 +289,7 @@ function TemplatSuratPage() {
   const [activeCategory, setActiveCategory] = useState("semua");
   const [current, setCurrent] = useState<Template | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [wizardStep, setWizardStep] = useState(1);
 
   // Builder state
   const [builderName, setBuilderName] = useState("");
@@ -289,6 +319,7 @@ function TemplatSuratPage() {
   function selectTemplate(t: Template) {
     setCurrent(t);
     setFormData({});
+    setWizardStep(1);
     setView("editor");
   }
 
@@ -302,6 +333,7 @@ function TemplatSuratPage() {
   }
 
   const filledCount = current ? current.fields.filter((f) => (formData[f.key] || "").trim()).length : 0;
+  const allFilled = current ? filledCount === current.fields.length : false;
 
   function downloadPdf() {
     window.print();
@@ -386,6 +418,7 @@ function TemplatSuratPage() {
     sel.removeAllRanges();
     setBuilderFieldCounter(counter);
     setBuilderFields((prev) => [...prev, { key, label: "Kolom " + counter, placeholder: text || "contoh isian" }]);
+    toast.success("Kolom isian ditambahkan.");
   }
 
   function updateBuilderField(key: string, prop: "label" | "placeholder", value: string) {
@@ -430,52 +463,105 @@ function TemplatSuratPage() {
     toast.success(`Templat "${newTemplate.name}" ditambahkan ke galeri.`);
   }
 
+  // ===== EDITOR VIEW (wizard) =====
   if (view === "editor" && current) {
     return (
       <div>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <Button variant="outline" size="sm" onClick={backToGallery}>
-            <ArrowLeft className="size-4" /> Ganti Templat
-          </Button>
-          <h2 className="font-display text-base font-bold text-foreground">{current.name}</h2>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={downloadPdf}>
-              <Download className="size-4" /> PDF
+        {/* Wizard progress bar */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={backToGallery} className="mr-2">
+              <ArrowLeft className="size-4" /> Ganti Templat
             </Button>
-            <Button size="sm" onClick={downloadWord}>
-              <Download className="size-4" /> Word
-            </Button>
+            <div className="flex flex-1 items-center gap-1.5">
+              {WIZARD_STEPS.map((s, i) => (
+                <div key={s.id} className="flex flex-1 items-center gap-1.5">
+                  <div
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors",
+                      wizardStep === s.id
+                        ? "bg-primary text-primary-foreground"
+                        : wizardStep > s.id
+                          ? "bg-success/15 text-success"
+                          : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {wizardStep > s.id ? (
+                      <Check className="size-3.5" />
+                    ) : (
+                      <span className="flex size-5 items-center justify-center rounded-full bg-current/20 text-[10px]">
+                        {s.id}
+                      </span>
+                    )}
+                    <span className="hidden sm:inline">{s.label}</span>
+                  </div>
+                  {i < WIZARD_STEPS.length - 1 && (
+                    <div className={cn("h-0.5 flex-1 rounded-full", wizardStep > s.id ? "bg-success" : "bg-border")} />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="page-head-icon">
+              {current.icon}
+            </div>
+            <div>
+              <h2 className="font-display text-lg font-bold text-foreground">{current.name}</h2>
+              <p className="text-xs text-slate">{current.desc}</p>
+            </div>
+          </div>
+          <Badge variant="secondary" className="gap-1.5">
+            {filledCount}/{current.fields.length} terisi
+          </Badge>
+        </div>
+
         <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
-          <Card className="lg:sticky lg:top-20 h-fit">
-            <CardContent className="space-y-4 p-5">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-foreground">Isi Data</h3>
-                <Badge variant="secondary">{filledCount}/{current.fields.length} terisi</Badge>
+          {/* Form panel */}
+          <Card className="lg:sticky lg:top-20 h-fit task-card-mockup !p-5">
+            <CardContent className="space-y-4 p-0">
+              <div className="flex items-center gap-2 border-b border-border pb-3">
+                <Pencil className="size-4 text-primary" />
+                <h3 className="text-sm font-bold text-foreground">Isi Data Surat</h3>
               </div>
               {current.fields.map((f) => {
                 const filled = !!(formData[f.key] || "").trim();
                 return (
                   <div key={f.key} className="space-y-1.5">
-                    <Label className={cn(filled && "text-success")}>
-                      {filled && "✓ "}{f.label}
+                    <Label className={cn("flex items-center gap-1.5 text-xs", filled && "text-success")}>
+                      {filled && <Check className="size-3" />}
+                      {f.label}
                     </Label>
                     <Input
                       placeholder={f.placeholder}
                       value={formData[f.key] || ""}
                       onChange={(e) => updateField(f.key, e.target.value)}
+                      className={cn(filled && "border-success/40 bg-success/5")}
                     />
                   </div>
                 );
               })}
-              <div className="rounded-lg bg-paper-dim p-3 text-xs text-slate">
+              <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
                 Preview di sebelah kanan otomatis terisi. Bagian yang belum kamu isi akan tetap ditandai putus-putus.
               </div>
+
+              {wizardStep === 1 && (
+                <Button
+                  className="btn-action-mockup"
+                  onClick={() => setWizardStep(2)}
+                  disabled={false}
+                >
+                  Lanjut ke Selesai
+                  <ArrowRight className="size-4" />
+                </Button>
+              )}
             </CardContent>
           </Card>
 
+          {/* Preview panel */}
           <div className="flex justify-center rounded-xl bg-paper p-6">
             <div
               id="tpl-preview-paper"
@@ -485,6 +571,32 @@ function TemplatSuratPage() {
             />
           </div>
         </div>
+
+        {/* Download bar — appears at wizard step 2 */}
+        {wizardStep === 2 && (
+          <div className="mt-6">
+            <div className={cn("status-banner mb-4", !allFilled && "opacity-70")}>
+              <Check className="size-4" />
+              {allFilled
+                ? "Semua kolom sudah terisi! Surat siap diunduh."
+                : `Masih ada ${current.fields.length - filledCount} kolom yang belum terisi. Surat tetap bisa diunduh — bagian kosong akan ditandai putus-putus.`}
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button className="btn-action-mockup btn-action-download" onClick={downloadPdf}>
+                <Download className="size-4" />
+                Unduh PDF
+              </button>
+              <button className="btn-secondary-line" onClick={downloadWord}>
+                <FileType2 className="size-4" />
+                Unduh Word (.doc)
+              </button>
+              <button className="btn-outline-navy" onClick={() => setWizardStep(1)}>
+                <ArrowLeft className="size-4" />
+                Kembali Isi Data
+              </button>
+            </div>
+          </div>
+        )}
 
         <style>{`
           .tpl-kv { display: flex; gap: 6px; margin: 2px 0; }
@@ -501,6 +613,7 @@ function TemplatSuratPage() {
     );
   }
 
+  // ===== BUILDER VIEW =====
   if (view === "builder") {
     return (
       <div>
@@ -508,18 +621,26 @@ function TemplatSuratPage() {
           <Button variant="outline" size="sm" onClick={cancelBuilder}>
             <ArrowLeft className="size-4" /> Batal
           </Button>
-          <h2 className="font-display text-base font-bold text-foreground">Buat Templat Baru</h2>
+          <div className="flex items-center gap-3">
+            <div className="page-head-icon">
+              <FileEdit className="size-5" />
+            </div>
+            <h2 className="font-display text-lg font-bold text-foreground">Buat Templat Baru</h2>
+          </div>
           <Button size="sm" onClick={saveBuilder}>
-            <Plus className="size-4" /> Simpan Templat
+            <Check className="size-4" /> Simpan Templat
           </Button>
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
-          <Card className="h-fit">
-            <CardContent className="space-y-4 p-5">
-              <h3 className="text-sm font-bold text-foreground">Detail Templat</h3>
+          <Card className="h-fit task-card-mockup !p-5">
+            <CardContent className="space-y-4 p-0">
+              <div className="flex items-center gap-2 border-b border-border pb-3">
+                <Pencil className="size-4 text-primary" />
+                <h3 className="text-sm font-bold text-foreground">Detail Templat</h3>
+              </div>
               <div className="space-y-1.5">
-                <Label>Nama Templat</Label>
+                <Label className="text-xs">Nama Templat</Label>
                 <Input
                   value={builderName}
                   onChange={(e) => setBuilderName(e.target.value)}
@@ -527,7 +648,7 @@ function TemplatSuratPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Deskripsi Singkat</Label>
+                <Label className="text-xs">Deskripsi Singkat</Label>
                 <Input
                   value={builderDesc}
                   onChange={(e) => setBuilderDesc(e.target.value)}
@@ -540,17 +661,20 @@ function TemplatSuratPage() {
                   <Badge variant="secondary">{builderFields.length}</Badge>
                 </div>
                 {builderFields.length === 0 ? (
-                  <p className="text-xs text-slate-light">
-                    Belum ada kolom isian. Blok teks pada area surat di sebelah kanan, lalu klik "Tandai sebagai Kolom Isian".
-                  </p>
+                  <div className="empty-state-mockup">
+                    <div className="pip">
+                      <Pencil className="size-4" />
+                    </div>
+                    <p className="mt-2 text-xs">Blok teks pada area surat di sebelah kanan, lalu klik "Tandai sebagai Kolom Isian".</p>
+                  </div>
                 ) : (
                   <div className="space-y-2.5">
                     {builderFields.map((f) => (
-                      <div key={f.key} className="rounded-lg border border-border bg-paper p-2.5">
+                      <div key={f.key} className="rounded-lg border border-border bg-muted/30 p-2.5">
                         <div className="mb-1.5 flex items-center justify-between">
                           <Badge variant="outline" className="font-mono text-[10px]">{f.key}</Badge>
                           <button
-                            className="text-sm leading-none text-slate-light hover:text-error"
+                            className="flex size-5 items-center justify-center rounded text-slate-light transition-colors hover:bg-destructive/10 hover:text-destructive"
                             onClick={() => removeBuilderField(f.key)}
                           >
                             ×
@@ -587,7 +711,7 @@ function TemplatSuratPage() {
                 ref={builderCanvasRef}
                 contentEditable
                 suppressContentEditableWarning
-                className="tpl-paper min-h-[400px] w-full cursor-text rounded-lg bg-white px-11 py-12 shadow-lg outline-none"
+                className="tpl-paper min-h-[400px] w-full cursor-text rounded-lg bg-white px-11 py-12 shadow-lg outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-primary"
                 style={{ fontFamily: "'Times New Roman', Georgia, serif", fontSize: "14px", lineHeight: "1.75", color: "#1c1c1c" }}
               >
                 <p>Kepada Yth.<br />...</p>
@@ -614,6 +738,7 @@ function TemplatSuratPage() {
     );
   }
 
+  // ===== GALLERY VIEW =====
   return (
     <div>
       <PageHeader
@@ -653,33 +778,38 @@ function TemplatSuratPage() {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {CATEGORIES.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setActiveCategory(c.id)}
-            className={cn(
-              "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
-              activeCategory === c.id
-                ? "border-navy-800 bg-navy-800 text-white"
-                : "border-border bg-white text-slate hover:border-navy-700",
-            )}
-          >
-            {c.label}
-          </button>
-        ))}
+      {/* Category pills with icons */}
+      <div className="choice-pills mb-5">
+        {CATEGORIES.map((c) => {
+          const Icon = c.icon;
+          return (
+            <button
+              key={c.id}
+              onClick={() => setActiveCategory(c.id)}
+              className={cn("choice-pill", activeCategory === c.id && "active")}
+            >
+              <Icon className="size-3.5" />
+              {c.label}
+            </button>
+          );
+        })}
       </div>
 
       {filteredTemplates.length === 0 && !showAddNew ? (
-        <p className="py-8 text-center text-sm text-slate">Tidak ada templat yang cocok. Coba kata kunci atau kategori lain.</p>
+        <div className="empty-state-mockup">
+          <div className="pip">
+            <Search className="size-4" />
+          </div>
+          <p className="mt-2 text-sm">Tidak ada templat yang cocok. Coba kata kunci atau kategori lain.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           {showAddNew && (
             <button
               onClick={openBuilder}
-              className="flex min-h-[150px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy-700 bg-paper-dim p-4 text-center transition-colors hover:bg-paper"
+              className="flex min-h-[170px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy-700 bg-paper-dim p-4 text-center transition-all hover:-translate-y-0.5 hover:bg-paper hover:shadow-md"
             >
-              <div className="flex size-9 items-center justify-center rounded-lg bg-navy-800">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-navy-800">
                 <Plus className="size-5 text-white" />
               </div>
               <h4 className="text-sm font-bold text-navy-800">Buat Templat Baru</h4>
@@ -689,12 +819,12 @@ function TemplatSuratPage() {
           {filteredTemplates.map((t) => (
             <div
               key={t.id}
-              className="group relative flex cursor-pointer flex-col gap-2.5 rounded-xl border-2 border-border bg-white p-4 text-left transition-all hover:border-navy-700 hover:shadow-md"
+              className="group relative flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-navy-700 hover:shadow-md"
               onClick={() => selectTemplate(t)}
             >
               {t.custom && (
                 <button
-                  className="absolute right-2.5 top-2.5 z-10 flex size-6 items-center justify-center rounded-md bg-white text-slate-light shadow-sm hover:bg-paper-dim hover:text-error"
+                  className="absolute right-2.5 top-2.5 z-10 flex size-6 items-center justify-center rounded-md bg-white text-slate-light shadow-sm transition-colors hover:bg-destructive/10 hover:text-destructive"
                   onClick={(e) => { e.stopPropagation(); deleteTemplate(t.id); }}
                   title="Hapus templat"
                 >
@@ -703,7 +833,7 @@ function TemplatSuratPage() {
               )}
               <button
                 className={cn(
-                  "absolute top-2.5 z-10 flex size-6 items-center justify-center rounded-md bg-white text-slate-light shadow-sm hover:bg-paper-dim hover:text-navy-800",
+                  "absolute top-2.5 z-10 flex size-6 items-center justify-center rounded-md bg-white text-slate-light shadow-sm transition-colors hover:bg-paper-dim hover:text-navy-800",
                   t.custom ? "right-10" : "right-2.5",
                 )}
                 onClick={(e) => { e.stopPropagation(); duplicateTemplate(t); }}
@@ -711,17 +841,25 @@ function TemplatSuratPage() {
               >
                 <Copy className="size-3" />
               </button>
-              <div className="flex size-9 items-center justify-center rounded-lg bg-paper-dim">
-                {t.icon}
+              <div className="task-head-mockup">
+                <div className="ic">{t.icon}</div>
+                <div className="flex-1">
+                  <h4 className="pr-12 text-sm font-bold text-foreground">{t.name}</h4>
+                  <p className="mt-0.5 text-xs leading-relaxed text-slate">{t.desc}</p>
+                </div>
               </div>
-              <h4 className="pr-12 text-sm font-bold text-foreground">{t.name}</h4>
-              <p className="text-xs leading-relaxed text-slate">{t.desc}</p>
-              {t.custom && (
-                <Badge className="w-fit text-[10px]" variant="outline">Templat Kamu</Badge>
-              )}
-              <Badge variant="secondary" className="w-fit text-[10px]">
-                {t.fields.length} bagian untuk diisi
-              </Badge>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {t.custom && (
+                  <Badge className="text-[10px]" variant="outline">Templat Kamu</Badge>
+                )}
+                <Badge variant="secondary" className="text-[10px]">
+                  {t.fields.length} bagian untuk diisi
+                </Badge>
+              </div>
+              <div className="mt-auto flex items-center gap-1.5 pt-1 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                <Pencil className="size-3" />
+                Klik untuk mulai mengisi
+              </div>
             </div>
           ))}
         </div>
