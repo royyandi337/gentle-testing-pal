@@ -297,7 +297,7 @@ export function PolaroidCard() {
                     if (el) previewRefs.current[i] = el;
                   }}
                   className="h-auto rounded-lg shadow-md"
-                  style={{ maxHeight: "320px", width: "auto" }}
+                  style={{ maxHeight: "220px", width: "auto" }}
                 />
               ))
             )}

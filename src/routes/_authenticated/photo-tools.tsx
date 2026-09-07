@@ -73,7 +73,7 @@ function BatchGrid({
   onDownload: (item: BatchItem) => void;
 }) {
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {items.map((item) => (
         <div
           key={item.id}
@@ -93,7 +93,7 @@ function BatchGrid({
             {formatSize(item.file.size)}
           </p>
           <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg border bg-background">
-            <img src={item.url} alt={item.file.name} className="h-full w-full object-cover" />
+            <img src={item.url} alt={item.file.name} className="max-h-[78%] max-w-[78%] object-contain" />
           </div>
           {item.done ? (
             <p className="text-center text-xs font-bold text-green-600">{item.resultLabel}</p>
