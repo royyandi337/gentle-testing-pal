@@ -73,6 +73,11 @@ export const NAV_GROUPS = [
   },
 ] as const;
 
+const OWNER_NAV_GROUP = {
+  label: "Sistem",
+  items: [{ to: "/pengaturan-website", label: "Pengaturan Website", icon: Settings }],
+} as const;
+
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -81,6 +86,7 @@ export function AppSidebar() {
   const settings = useSiteSettings();
   const { tier, remaining, loading: creditsLoading } = useCredits();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   const isPremium = tier === "premium" || remaining === -1;
   const tierLabel = creditsLoading ? "…" : (tier ?? "trial");
@@ -104,6 +110,15 @@ export function AppSidebar() {
       .then(({ data }) => {
         if (!active) return;
         setAvatarUrl(data?.avatar_url ?? null);
+      });
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active) return;
+        setIsOwner(data?.role === "owner");
       });
     return () => {
       active = false;
@@ -174,6 +189,35 @@ export function AppSidebar() {
             </SidebarGroup>
           </div>
         ))}
+        {isOwner && (
+          <div>
+            <SidebarSeparator className="my-1 group-data-[collapsible=icon]:mx-auto" />
+            <SidebarGroup className="py-1">
+              <SidebarGroupLabel className="text-[0.68rem] font-medium uppercase tracking-wider text-sidebar-foreground/55">
+                {OWNER_NAV_GROUP.label}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {OWNER_NAV_GROUP.items.map((item) => (
+                    <SidebarMenuItem key={item.to}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname === item.to}
+                        tooltip={item.label}
+                        className="transition-colors duration-200 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground"
+                      >
+                        <Link to={item.to}>
+                          <item.icon />
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </div>
+        )}
       </SidebarContent>
 
       <div className="space-y-2 px-2 pb-2 group-data-[collapsible=icon]:hidden">
