@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { RotateCw, RotateCcw, X, Plus, Download } from "lucide-react";
 import { PageHeader } from "@/components/layout/AppShell";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { LabelPrintCard } from "@/components/shared/LabelPrintCard";
@@ -52,7 +53,68 @@ function PhotoToolsPage() {
   const [percent, setPercent] = useState(50);
   const [quality, setQuality] = useState(80);
   const [format, setFormat] = useState<"jpg" | "png" | "webp">("jpg");
-  const [rotation, setRotation] = useState(90);
+
+  // Per-image rotate state
+  const [rotateItems, setRotateItems] = useState<{ id: string; file: File; url: string; angle: number }[]>([]);
+
+  function addRotateFiles(files: File[]) {
+    const newItems = files
+      .filter((f) => f.type.startsWith("image/"))
+      .map((f) => ({ id: `${f.name}-${Date.now()}-${Math.random()}`, file: f, url: URL.createObjectURL(f), angle: 0 }));
+    setRotateItems((prev) => [...prev, ...newItems]);
+  }
+  function removeRotateItem(id: string) {
+    setRotateItems((prev) => prev.filter((item) => item.id !== id));
+  }
+  function rotateItem(id: string, delta: number) {
+    setRotateItems((prev) => prev.map((item) => (item.id === id ? { ...item, angle: item.angle + delta } : item)));
+  }
+  function resetRotateItem(id: string) {
+    setRotateItems((prev) => prev.map((item) => (item.id === id ? { ...item, angle: 0 } : item)));
+  }
+  async function applyAllRotations() {
+    if (!rotateItems.length) return;
+    setPhase("working");
+    setMessage(`Memproses ${rotateItems.length} foto...`);
+    try {
+      let done = 0;
+      for (const item of rotateItems) {
+        const img = await loadImage(item.url);
+        const rotate = ((item.angle % 360) + 360) % 360;
+        const swap = rotate === 90 || rotate === 270;
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        const canvas = document.createElement("canvas");
+        canvas.width = swap ? h : w;
+        canvas.height = swap ? w : h;
+        const ctx = canvas.getContext("2d")!;
+        const type = item.file.type || "image/jpeg";
+        if (type !== "image/png") {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((rotate * Math.PI) / 180);
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        const blob = await canvasToBlob(canvas, type, quality / 100);
+        const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg";
+        const fileName = `${item.file.name.replace(/\.[^.]+$/, "")}-rotated.${ext}`;
+        downloadBlob(blob, fileName);
+        try {
+          await saveResult({ category: "photo", tool: "rotate", fileName, blob });
+        } catch {
+          // Riwayat opsional.
+        }
+        done += 1;
+        setMessage(`Memproses ${done}/${rotateItems.length} foto...`);
+      }
+      setPhase("done");
+      setMessage(`${rotateItems.length} foto selesai diputar dan diunduh.`);
+    } catch (error) {
+      setPhase("error");
+      setMessage(error instanceof Error ? error.message : "Proses rotasi gagal.");
+    }
+  }
 
   async function process(tool: "resize" | "compress" | "convert" | "rotate") {
     if (!files.length) return;
@@ -78,7 +140,7 @@ function PhotoToolsPage() {
           }
         }
 
-        const rotate = tool === "rotate" ? ((rotation % 360) + 360) % 360 : 0;
+        const rotate = 0;
         const swap = rotate === 90 || rotate === 270;
         const canvas = document.createElement("canvas");
         canvas.width = swap ? targetH : targetW;
@@ -258,23 +320,87 @@ function PhotoToolsPage() {
         <TabsContent value="rotate" className="mt-4">
           <Card>
             <CardContent className="space-y-4 pt-6">
-              <div className="flex flex-wrap gap-2">
-                {[90, 180, 270].map((deg) => (
-                  <Button
-                    key={deg}
-                    variant={rotation === deg ? "default" : "secondary"}
-                    onClick={() => setRotation(deg)}
-                  >
-                    {deg}°
-                  </Button>
-                ))}
+              <div className="flex items-start gap-2">
+                <RotateCw className="size-4 shrink-0 text-muted-foreground mt-0.5" />
+                <p className="text-sm text-muted-foreground">
+                  Unggah beberapa foto, lalu putar satu per satu — pratinjau langsung berubah setiap kali tombol ditekan.
+                </p>
               </div>
-              <Button
-                disabled={!files.length || phase === "working"}
-                onClick={() => process("rotate")}
-              >
-                Putar foto
-              </Button>
+              <FileDropzone
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onFiles={addRotateFiles}
+                hint="Satu atau beberapa foto sekaligus"
+              />
+              {rotateItems.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                    {rotateItems.map((item) => (
+                      <div key={item.id} className="relative rounded-xl border bg-card p-3 space-y-2">
+                        <button
+                          className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded-md border bg-background text-muted-foreground hover:text-foreground"
+                          onClick={() => removeRotateItem(item.id)}
+                          aria-label="Hapus foto"
+                        >
+                          <X className="size-3" />
+                        </button>
+                        <p className="truncate pr-6 text-xs font-medium text-foreground">{item.file.name}</p>
+                        <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg border bg-background">
+                          <img
+                            src={item.url}
+                            alt={item.file.name}
+                            className="max-h-[78%] max-w-[78%] object-contain transition-transform duration-200"
+                            style={{ transform: `rotate(${item.angle}deg)` }}
+                          />
+                        </div>
+                        <p className="text-center text-xs font-medium text-muted-foreground">
+                          {((item.angle % 360) + 360) % 360}°
+                        </p>
+                        <div className="flex gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="flex-1"
+                            aria-label="Putar kiri"
+                            onClick={() => rotateItem(item.id, -90)}
+                          >
+                            <RotateCcw className="size-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-none px-2 text-xs"
+                            onClick={() => resetRotateItem(item.id)}
+                          >
+                            Reset
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="flex-1"
+                            aria-label="Putar kanan"
+                            onClick={() => rotateItem(item.id, 90)}
+                          >
+                            <RotateCw className="size-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-3 border-t border-dashed border-border pt-4">
+                    <Button variant="outline" size="sm" onClick={() => addRotateFiles([])}>
+                      <Plus className="size-4" /> Pilih Gambar
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      disabled={phase === "working"}
+                      onClick={applyAllRotations}
+                    >
+                      <Download className="size-4" /> Terapkan & Unduh Semua
+                    </Button>
+                  </div>
+                </>
+              ) : null}
             </CardContent>
           </Card>
         </TabsContent>

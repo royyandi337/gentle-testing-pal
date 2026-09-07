@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { X, Printer, FileText, Image as ImageIcon } from "lucide-react";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
 import { Button } from "@/components/ui/button";
@@ -50,10 +50,6 @@ const CROP_MARK_GAP = 4;
 
 type Cropped = { name: string; dataUrl: string; width: number; height: number };
 
-/**
- * Trims dark bands (phone status bar / chat area) from the top and bottom by
- * scanning row brightness, so it adapts to any device instead of fixed offsets.
- */
 async function autoCrop(file: File): Promise<Cropped> {
   const img = await loadImage(await fileToDataUrl(file));
   const w = img.naturalWidth;
@@ -85,7 +81,6 @@ async function autoCrop(file: File): Promise<Cropped> {
   let bottom = h - 1;
   while (bottom > top + 1 && !isContent(bottom)) bottom -= 1;
 
-  // Safety net: never crop away more than 40% of the image.
   if (bottom - top < h * 0.6) {
     top = 0;
     bottom = h - 1;
@@ -141,10 +136,17 @@ function drawCropMarks(
 export function LabelPrintCard() {
   const [items, setItems] = useState<Cropped[]>([]);
   const [layout, setLayout] = useState<string>("4");
+  const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | undefined>(undefined);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [sheetInfo, setSheetInfo] = useState<{ pages: number; perPage: number }>();
 
   const layoutDef = LAYOUTS.find((l) => l.value === layout) ?? LAYOUTS[0];
+
+  const isLandscape = orientation === "landscape";
+  const pageW = isLandscape ? PAGE_H : PAGE_W;
+  const pageH = isLandscape ? PAGE_W : PAGE_H;
 
   let perPage: number;
   let cols: number;
@@ -159,8 +161,8 @@ export function LabelPrintCard() {
   } else {
     cardW = Math.round(layoutDef.cardWmm * MM_TO_PX);
     cardH = Math.round(layoutDef.cardHmm * MM_TO_PX);
-    const availW = PAGE_W - PAGE_MARGIN * 2;
-    const availH = PAGE_H - PAGE_MARGIN * 2;
+    const availW = pageW - PAGE_MARGIN * 2;
+    const availH = pageH - PAGE_MARGIN * 2;
     const gap = CROP_MARK_GAP * 2 + CROP_MARK_LEN;
     cols = Math.floor((availW + gap) / (cardW + gap));
     rows = Math.floor((availH + gap) / (cardH + gap));
@@ -169,40 +171,19 @@ export function LabelPrintCard() {
 
   const pageCount = Math.max(1, Math.ceil(items.length / perPage));
 
-  async function handleFiles(files: File[]) {
-    const images = files.filter((f) => f.type.startsWith("image/"));
-    if (!images.length) {
-      setPhase("error");
-      setMessage("Pilih berkas gambar (JPG, PNG, atau WEBP).");
-      return;
-    }
-    setPhase("working");
-    setMessage("Memotong otomatis area resi...");
-    try {
-      const cropped: Cropped[] = [];
-      for (const file of images) cropped.push(await autoCrop(file));
-      setItems((prev) => [...prev, ...cropped]);
-      setPhase("done");
-      setMessage(`${cropped.length} gambar dipotong otomatis. Periksa preview di bawah.`);
-    } catch (error) {
-      setPhase("error");
-      setMessage(error instanceof Error ? error.message : "Gagal memotong gambar.");
-    }
-  }
-
-  async function renderPages(): Promise<HTMLCanvasElement[]> {
+  const renderPages = useCallback(async (): Promise<HTMLCanvasElement[]> => {
     const pages: HTMLCanvasElement[] = [];
     for (let p = 0; p < pageCount; p += 1) {
       const canvas = document.createElement("canvas");
-      canvas.width = PAGE_W;
-      canvas.height = PAGE_H;
+      canvas.width = pageW;
+      canvas.height = pageH;
       const ctx = canvas.getContext("2d")!;
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, PAGE_W, PAGE_H);
+      ctx.fillRect(0, 0, pageW, pageH);
 
       if (layoutDef.type === "grid") {
-        const cellW = (PAGE_W - PAGE_MARGIN * 2) / cols;
-        const cellH = (PAGE_H - PAGE_MARGIN * 2) / rows;
+        const cellW = (pageW - PAGE_MARGIN * 2) / cols;
+        const cellH = (pageH - PAGE_MARGIN * 2) / rows;
         const slice = items.slice(p * perPage, (p + 1) * perPage);
         for (let i = 0; i < slice.length; i += 1) {
           const item = slice[i]!;
@@ -223,8 +204,8 @@ export function LabelPrintCard() {
         const gap = CROP_MARK_GAP * 2 + CROP_MARK_LEN;
         const totalW = cols * cardW + (cols - 1) * gap;
         const totalH = rows * cardH + (rows - 1) * gap;
-        const startX = (PAGE_W - totalW) / 2;
-        const startY = (PAGE_H - totalH) / 2;
+        const startX = (pageW - totalW) / 2;
+        const startY = (pageH - totalH) / 2;
         const slice = items.slice(p * perPage, (p + 1) * perPage);
         for (let i = 0; i < slice.length; i += 1) {
           const item = slice[i]!;
@@ -246,6 +227,51 @@ export function LabelPrintCard() {
       pages.push(canvas);
     }
     return pages;
+  }, [items, pageCount, pageW, pageH, layoutDef, cols, rows, perPage, cardW, cardH]);
+
+  // Live A4 sheet preview
+  useEffect(() => {
+    const host = sheetRef.current;
+    if (!host || !items.length) {
+      setSheetInfo(undefined);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const pages = await renderPages();
+      if (cancelled || !host) return;
+      host.replaceChildren();
+      for (const canvas of pages) {
+        canvas.style.maxHeight = "460px";
+        canvas.style.width = "auto";
+        canvas.style.maxWidth = "100%";
+        canvas.className = "rounded-xl border shadow-sm bg-white";
+        host.appendChild(canvas);
+      }
+      setSheetInfo({ pages: pages.length, perPage });
+    })();
+    return () => { cancelled = true; };
+  }, [renderPages, items.length, perPage]);
+
+  async function handleFiles(files: File[]) {
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    if (!images.length) {
+      setPhase("error");
+      setMessage("Pilih berkas gambar (JPG, PNG, atau WEBP).");
+      return;
+    }
+    setPhase("working");
+    setMessage("Memotong otomatis area resi...");
+    try {
+      const cropped: Cropped[] = [];
+      for (const file of images) cropped.push(await autoCrop(file));
+      setItems((prev) => [...prev, ...cropped]);
+      setPhase("done");
+      setMessage(`${cropped.length} gambar dipotong otomatis.`);
+    } catch (error) {
+      setPhase("error");
+      setMessage(error instanceof Error ? error.message : "Gagal memotong gambar.");
+    }
   }
 
   async function downloadPdf() {
@@ -258,8 +284,10 @@ export function LabelPrintCard() {
       for (const canvas of await renderPages()) {
         const blob = await canvasToBlob(canvas, "image/jpeg", 0.92);
         const embedded = await doc.embedJpg(new Uint8Array(await blob.arrayBuffer()));
-        const page = doc.addPage([595.28, 841.89]);
-        page.drawImage(embedded, { x: 0, y: 0, width: 595.28, height: 841.89 });
+        const w = isLandscape ? 841.89 : 595.28;
+        const h = isLandscape ? 595.28 : 841.89;
+        const page = doc.addPage([w, h]);
+        page.drawImage(embedded, { x: 0, y: 0, width: w, height: h });
       }
       const bytes = await doc.save();
       const pdf = new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" });
@@ -297,89 +325,144 @@ export function LabelPrintCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Cetak Label/Resi</CardTitle>
-        <CardDescription>
-          Unggah banyak screenshot resi sekaligus. Status bar dan area chat di atas/bawah dipotong
-          otomatis, lalu disusun rapi pada kertas A4.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <FileDropzone
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          onFiles={handleFiles}
-          hint="Beberapa screenshot resi sekaligus"
-        />
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
+      {/* Form column (left) */}
+      <Card className="border shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Printer className="size-4 text-muted-foreground" /> Cetak Label/Resi
+          </CardTitle>
+          <CardDescription>
+            Unggah screenshot resi — status bar &amp; area chat dipotong otomatis, lalu disusun di kertas A4.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <FileDropzone
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            onFiles={handleFiles}
+            hint="Beberapa screenshot resi sekaligus"
+          />
 
-        {items.length ? (
-          <div className="space-y-2">
-            <Label>Preview hasil potong ({items.length} gambar)</Label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {items.map((item, i) => (
-                <div key={`${item.name}-${i}`} className="relative rounded-lg border bg-card p-1">
-                  <img
-                    src={item.dataUrl}
-                    alt={`Resi ${i + 1}`}
-                    className="h-28 w-full rounded object-contain"
-                  />
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    aria-label={`Hapus resi ${i + 1}`}
-                    className="absolute right-1 top-1 size-6"
-                    onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
-                  >
-                    <X className="size-3" />
-                  </Button>
-                </div>
-              ))}
+          {items.length ? (
+            <div className="space-y-2">
+              <Label>Preview hasil potong ({items.length} gambar)</Label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {items.map((item, i) => (
+                  <div key={`${item.name}-${i}`} className="relative rounded-lg border bg-card p-1">
+                    <img
+                      src={item.dataUrl}
+                      alt={`Resi ${i + 1}`}
+                      className="h-24 w-full rounded object-contain"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      aria-label={`Hapus resi ${i + 1}`}
+                      className="absolute right-1 top-1 size-6"
+                      onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <X className="size-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="space-y-1.5">
+            <Label>Layout cetak (A4)</Label>
+            <Select value={layout} onValueChange={setLayout}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LAYOUTS.map((l) => (
+                  <SelectItem key={l.value} value={l.value}>
+                    {l.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Orientasi kertas</Label>
+            <div className="flex gap-2">
+              <Button
+                variant={orientation === "portrait" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setOrientation("portrait")}
+              >
+                Portrait
+              </Button>
+              <Button
+                variant={orientation === "landscape" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setOrientation("landscape")}
+              >
+                Landscape
+              </Button>
             </div>
           </div>
-        ) : null}
 
-        <div className="space-y-1.5">
-          <Label>Layout cetak (A4)</Label>
-          <Select value={layout} onValueChange={setLayout}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {LAYOUTS.map((l) => (
-                <SelectItem key={l.value} value={l.value}>
-                  {l.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           {items.length ? (
             <p className="text-xs text-muted-foreground">
               {items.length} gambar → {pageCount} halaman A4 ({perPage} per halaman).
             </p>
           ) : null}
-        </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button disabled={!items.length || phase === "working"} onClick={downloadPdf}>
-            Download PDF
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={!items.length || phase === "working"}
-            onClick={downloadJpgPages}
-          >
-            Download JPG per halaman
-          </Button>
-          {items.length ? (
-            <Button variant="ghost" onClick={() => setItems([])}>
-              Kosongkan
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={!items.length || phase === "working"} onClick={downloadPdf}>
+              <FileText className="size-4" /> Download PDF
             </Button>
-          ) : null}
-        </div>
+            <Button
+              variant="secondary"
+              disabled={!items.length || phase === "working"}
+              onClick={downloadJpgPages}
+            >
+              <ImageIcon className="size-4" /> JPG per halaman
+            </Button>
+            {items.length ? (
+              <Button variant="ghost" onClick={() => setItems([])}>
+                Kosongkan
+              </Button>
+            ) : null}
+          </div>
 
-        <ProcessState phase={phase} message={message} />
-      </CardContent>
-    </Card>
+          <ProcessState phase={phase} message={message} />
+        </CardContent>
+      </Card>
+
+      {/* Preview column (right) */}
+      <Card className="border shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Pratinjau Lembar A4</CardTitle>
+          <CardDescription>
+            {items.length
+              ? `${pageCount} halaman · ${perPage} resi per halaman · ${orientation}`
+              : "Unggah resi untuk melihat pratinjau susunan cetak."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            ref={sheetRef}
+            className="flex min-h-[400px] flex-col items-center justify-center gap-4 rounded-xl bg-muted/40 p-4"
+          >
+            {!items.length ? (
+              <div className="text-center text-sm text-muted-foreground">
+                <Printer className="mx-auto mb-2 size-8 opacity-40" />
+                Pratinjau akan muncul di sini setelah resi diunggah.
+              </div>
+            ) : null}
+          </div>
+          {sheetInfo ? (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {sheetInfo.pages} halaman · {sheetInfo.perPage} resi per halaman
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
