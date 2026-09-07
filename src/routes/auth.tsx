@@ -3,10 +3,8 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { Loader2, Eye, EyeOff, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-
-const TITLE = "Masuk atau Daftar — ROY DIGITAL SOLUTION";
-const DESCRIPTION =
-  "Masuk ke akun ROY DIGITAL SOLUTION untuk mengakses Pas Foto, PDF Tools, Word Tools, dan Photo Tools.";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { BrandMark } from "@/components/shared/BrandMark";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -30,6 +28,8 @@ const ASIDE_POINTS = [
 
 function AuthPage() {
   const navigate = useNavigate();
+  const settings = useSiteSettings();
+  const siteName = settings.site_name || "ROY DIGITAL SOLUTION";
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -112,15 +112,8 @@ function AuthPage() {
           className="absolute -right-32 -top-32 size-[420px] rounded-full"
           style={{ background: "radial-gradient(circle, rgba(199,154,70,.18), transparent 65%)" }}
         />
-        <div className="relative flex items-center gap-2.5">
-          <div className="flex size-8 items-center justify-center rounded-[10px] bg-white/10">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" className="size-4">
-              <path d="M12 2 3 7v10l9 5 9-5V7z" />
-              <path d="M3 7l9 5 9-5" />
-              <path d="M12 22V12" />
-            </svg>
-          </div>
-          <span className="font-display text-[15px] font-semibold text-white">ROY DIGITAL SOLUTION</span>
+        <div className="relative">
+          <BrandMark light />
         </div>
         <div className="relative">
           <h2 className="max-w-[380px] font-display text-3xl font-semibold leading-[1.25] text-white">
@@ -137,21 +130,14 @@ function AuthPage() {
             ))}
           </div>
         </div>
-        <div className="relative text-[12.5px] text-[#8492AC]">© 2026 ROY Digital Solution</div>
+        <div className="relative text-[12.5px] text-[#8492AC]">© 2026 {siteName}</div>
       </aside>
 
       {/* Form panel */}
       <div className="flex items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-[380px]">
-          <Link to="/" className="mb-6 flex items-center justify-center gap-2.5 lg:hidden">
-            <div className="flex size-8 items-center justify-center rounded-[10px] bg-primary">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" className="size-4">
-                <path d="M12 2 3 7v10l9 5 9-5V7z" />
-                <path d="M3 7l9 5 9-5" />
-                <path d="M12 22V12" />
-              </svg>
-            </div>
-            <span className="font-display text-sm font-semibold tracking-tight text-foreground">ROY DIGITAL SOLUTION</span>
+          <Link to="/" className="mb-6 flex justify-center lg:hidden">
+            <BrandMark />
           </Link>
 
           <h1 className="font-display text-[26px] font-bold text-foreground">

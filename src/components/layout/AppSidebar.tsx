@@ -44,6 +44,7 @@ import { AdSlot } from "@/components/shared/AdSlot";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useCredits } from "@/hooks/useCredits";
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 export const NAV_GROUPS = [
   {
@@ -139,19 +140,30 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="transition-[width] duration-300 ease-in-out">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2.5 px-1 py-1.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-white/10">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" className="size-4">
-              <path d="M12 2 3 7v10l9 5 9-5V7z" />
-              <path d="M3 7l9 5 9-5" />
-              <path d="M12 22V12" />
-            </svg>
+          <div className={cn(
+            "flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px]",
+            settings.logo_data_url ? "bg-white/5 p-0.5" : "bg-white/10",
+          )}>
+            {settings.logo_data_url ? (
+              <img
+                src={settings.logo_data_url}
+                alt={settings.site_name_main || "Logo"}
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" className="size-4">
+                <path d="M12 2 3 7v10l9 5 9-5V7z" />
+                <path d="M3 7l9 5 9-5" />
+                <path d="M12 22V12" />
+              </svg>
+            )}
           </div>
           <div className="min-w-0 flex-1 font-display transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
             <p className="truncate text-[13.5px] font-bold leading-tight text-white">
-              {settings.site_name.split(" ").slice(0, 2).join(" ") || "ROY DIGITAL"}
+              {settings.site_name_main || "ROY DIGITAL"}
             </p>
             <p className="truncate text-[9.5px] text-sidebar-foreground/55">
-              {settings.site_name.split(" ").slice(2).join(" ") || "SOLUTION"}
+              {settings.site_name_sub || "SOLUTION"}
             </p>
           </div>
         </div>

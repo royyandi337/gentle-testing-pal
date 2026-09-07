@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useCredits } from "@/hooks/useCredits";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { BrandMark } from "@/components/shared/BrandMark";
 import { listHistory, type HistoryRow } from "@/lib/history";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -83,13 +84,16 @@ function Dashboard() {
     <div className="mx-auto max-w-[1000px]">
       {/* Hero — navy with flow chips */}
       <section className="relative mb-7 flex flex-col gap-8 overflow-hidden rounded-[22px] bg-[#0E1B30] p-7 md:flex-row md:items-center md:justify-between md:p-9">
+        <div className="relative mb-1">
+          <BrandMark light />
+        </div>
         <div
           className="absolute inset-0"
           style={{ background: "radial-gradient(circle at 90% 10%, rgba(199,154,70,.14), transparent 55%)" }}
         />
         <div className="relative">
           <h1 className="max-w-[400px] font-display text-2xl font-bold leading-[1.2] text-white md:text-[27px]">
-            Pas foto dan dokumen resmi, beres dalam satu alur.
+            {settings.site_name_main || "ROY DIGITAL"}: pas foto dan dokumen resmi, beres dalam satu alur.
           </h1>
           <p className="mt-3 max-w-[360px] text-sm text-[#B9C3D6]">
             {settings.site_tagline || "Solusi Digital untuk Foto, Dokumen & Kreativitas."}

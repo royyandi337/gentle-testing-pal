@@ -14,10 +14,8 @@ import {
   QrCode,
   FileEdit,
 } from "lucide-react";
-
-const TITLE = "ROY DIGITAL SOLUTION — Pas Foto, PDF & Photo Tools Online";
-const DESCRIPTION =
-  "Satu tempat untuk bikin pas foto siap cetak, rapikan berkas PDF & Word, dan olah foto — lengkap dengan bantuan AI, dari upload sampai siap dicetak.";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { BrandMark } from "@/components/shared/BrandMark";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -94,29 +92,13 @@ const COMPARE_ROWS: [string, boolean | string, boolean | string, boolean | strin
   ["Dukungan prioritas", false, false, true],
 ];
 
-function BrandMark({ light = false }: { light?: boolean }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <div
-        className={`flex size-8 items-center justify-center rounded-[10px] ${light ? "bg-white/10" : "bg-primary"}`}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" className="size-4">
-          <path d="M12 2 3 7v10l9 5 9-5V7z" />
-          <path d="M3 7l9 5 9-5" />
-          <path d="M12 22V12" />
-        </svg>
-      </div>
-      <div className={`font-display text-[15px] font-bold leading-[1.1] ${light ? "text-white" : "text-foreground"}`}>
-        ROY DIGITAL
-        <small className={`block font-sans text-[10.5px] font-medium ${light ? "text-white/50" : "text-slate"}`} style={{ letterSpacing: "0.04em" }}>
-          SOLUTION
-        </small>
-      </div>
-    </div>
-  );
-}
+
 
 function Landing() {
+  const settings = useSiteSettings();
+  const siteName = settings.site_name || "ROY DIGITAL SOLUTION";
+  const tagline = settings.site_tagline || "Solusi digital untuk foto, dokumen, dan kebutuhan kreatif Anda.";
+
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
@@ -157,7 +139,7 @@ function Landing() {
               Urus pas foto dan dokumen resmi tanpa buka lima aplikasi berbeda.
             </h1>
             <p className="mt-5 max-w-[480px] text-[17px] leading-relaxed text-slate">
-              Satu tempat untuk bikin pas foto siap cetak, rapikan berkas PDF &amp; Word, dan olah foto — lengkap dengan bantuan AI, dari upload sampai siap dicetak.
+              {tagline}
             </p>
             <div className="mt-8 flex gap-3.5">
               <Link to="/auth" className="rounded-[11px] bg-primary px-5 py-2.5 text-[14.5px] font-semibold text-primary-foreground transition hover:bg-[#0E1B30]">
@@ -335,7 +317,7 @@ function Landing() {
         <div className="mx-auto flex max-w-[1180px] flex-wrap justify-between gap-10 px-4 md:px-8">
           <div>
             <BrandMark />
-            <p className="mt-4 max-w-[220px] text-[13.5px] text-slate">Solusi digital untuk foto, dokumen, dan kebutuhan kreatif.</p>
+            <p className="mt-4 max-w-[220px] text-[13.5px] text-slate">{tagline}</p>
           </div>
           <div className="flex gap-16">
             <div>
@@ -357,7 +339,7 @@ function Landing() {
           </div>
         </div>
         <div className="mx-auto mt-10 max-w-[1180px] border-t border-border px-4 pt-5 text-[12.5px] text-slate-light md:px-8">
-          © 2026 ROY Digital Solution. Semua hak dilindungi.
+          © 2026 {siteName}. Semua hak dilindungi.
         </div>
       </footer>
     </div>

@@ -49,6 +49,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { refreshSiteSettings } from "@/hooks/useSiteSettings";
 
 export const Route = createFileRoute("/_authenticated/pengaturan-website")({
   ssr: false,
@@ -206,6 +207,7 @@ function PengaturanWebsitePage() {
     if (error) {
       toast.error("Gagal menyimpan pengaturan.");
     } else {
+      await refreshSiteSettings();
       toast.success("Pengaturan website berhasil disimpan.");
     }
   }
