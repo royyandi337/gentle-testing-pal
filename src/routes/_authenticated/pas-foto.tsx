@@ -46,6 +46,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useCredits } from "@/hooks/useCredits";
+import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   PHOTO_SIZES,
@@ -136,6 +138,8 @@ async function dataUrlToFile(dataUrl: string, name: string): Promise<File> {
 }
 
 function PasFotoPage() {
+  const { tier, remaining } = useCredits();
+  const isPremium = tier === "premium" || remaining === -1;
   const [step, setStep] = useState(1);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -451,9 +455,14 @@ function PasFotoPage() {
             </p>
           </div>
           {file ? (
-            <Button variant="outline" size="sm" onClick={resetAll} className="shrink-0">
-              <Upload className="size-4" /> Ganti Foto
-            </Button>
+            <div className="flex shrink-0 items-center gap-2">
+              {isPremium ? (
+                <Badge className="bg-[#C79A46] text-white hover:bg-[#C79A46]">Premium</Badge>
+              ) : null}
+              <Button variant="outline" size="sm" onClick={resetAll}>
+                <Upload className="size-4" /> Ganti Foto
+              </Button>
+            </div>
           ) : null}
         </header>
 
@@ -1235,6 +1244,13 @@ function AiStepCard({
             <SkipForward className="size-4" /> Lewati langkah ini
           </Button>
         </div>
+
+        {busy ? (
+          <div className="space-y-1.5">
+            <Progress value={66} className="h-1.5" />
+            <p className="text-center text-xs text-muted-foreground">Sedang diproses AI... mohon tunggu</p>
+          </div>
+        ) : null}
 
         <ProcessState phase={phase} message={statusMsg} />
 
