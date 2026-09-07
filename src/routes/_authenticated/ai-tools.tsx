@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { fileToDataUrl } from "@/lib/image";
 import { saveResult } from "@/lib/history";
 import { isCreditError, CreditExhaustedAlert } from "@/components/shared/CreditExhaustedAlert";
+import { supabase } from "@/integrations/supabase/client";
+
 
 export const Route = createFileRoute("/_authenticated/ai-tools")({
   head: () => ({
@@ -139,7 +141,13 @@ function AiToolCard({ kind }: { kind: ToolKind }) {
       } else {
         const form = new FormData();
         form.append("image", file);
-        const res = await fetch(endpoint, { method: "POST", body: form });
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        const res = await fetch(endpoint, {
+          method: "POST",
+          body: form,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         const payload = (await res.json().catch(() => ({}))) as { image?: string; error?: string };
         if (!res.ok || !payload.image) {
           throw new Error(payload.error ?? `Proses AI gagal (${res.status}).`);

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
 import { Button } from "@/components/ui/button";
@@ -124,7 +125,13 @@ async function callAiEndpoint(
   const form = new FormData();
   form.append("image", file);
   for (const [key, value] of Object.entries(extra ?? {})) form.append(key, value);
-  const res = await fetch(path, { method: "POST", body: form });
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  const res = await fetch(path, {
+    method: "POST",
+    body: form,
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
   const json = (await res.json().catch(() => ({}))) as { image?: string; error?: string };
   if (!res.ok || !json.image) {
     throw new Error(json.error ?? "Proses AI gagal. Silakan coba lagi.");
