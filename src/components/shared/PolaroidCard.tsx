@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { X, Plus, Download, Trash2, ImagePlus } from "lucide-react";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
 import { Button } from "@/components/ui/button";
@@ -7,13 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { canvasToBlob, downloadBlob, fileToDataUrl, loadImage } from "@/lib/image";
 import { saveResult } from "@/lib/history";
 
@@ -32,7 +25,7 @@ const CAPTION_H = 80;
 const CANVAS_W = PHOTO_W + FRAME_BORDER * 2;
 const CANVAS_H = PHOTO_H + FRAME_BORDER + CAPTION_H;
 
-type LoadedImage = { name: string; dataUrl: string; img: HTMLImageElement };
+type LoadedImage = { id: string; name: string; url: string; img: HTMLImageElement };
 
 export function PolaroidCard() {
   const [images, setImages] = useState<LoadedImage[]>([]);
@@ -42,10 +35,11 @@ export function PolaroidCard() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | undefined>(undefined);
   const previewRefs = useRef<HTMLCanvasElement[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const style = FRAME_STYLES.find((s) => s.value === frameStyle) ?? FRAME_STYLES[0];
 
-  async function handleFiles(files: File[]) {
+  const handleFiles = useCallback(async (files: File[]) => {
     const valid = files.filter((f) => f.type.startsWith("image/"));
     if (!valid.length) {
       setPhase("error");
@@ -57,9 +51,9 @@ export function PolaroidCard() {
     try {
       const loaded: LoadedImage[] = [];
       for (const file of valid) {
-        const dataUrl = await fileToDataUrl(file);
-        const img = await loadImage(dataUrl);
-        loaded.push({ name: file.name, dataUrl, img });
+        const url = URL.createObjectURL(file);
+        const img = await loadImage(url);
+        loaded.push({ id: `${file.name}-${Date.now()}-${Math.random()}`, name: file.name, url, img });
       }
       setImages((prev) => [...prev, ...loaded]);
       setPhase("done");
@@ -68,58 +62,66 @@ export function PolaroidCard() {
       setPhase("error");
       setMessage(error instanceof Error ? error.message : "Gagal memuat gambar.");
     }
+  }, []);
+
+  function removeImage(id: string) {
+    setImages((prev) => prev.filter((item) => item.id !== id));
+  }
+  function clearAll() {
+    setImages([]);
+    setPhase("idle");
+    setMessage(undefined);
   }
 
-  function renderPolaroid(item: LoadedImage, idx: number): HTMLCanvasElement {
-    const canvas = document.createElement("canvas");
-    canvas.width = CANVAS_W;
-    canvas.height = CANVAS_H;
-    const ctx = canvas.getContext("2d")!;
+  const renderPolaroid = useCallback(
+    (item: LoadedImage): HTMLCanvasElement => {
+      const canvas = document.createElement("canvas");
+      canvas.width = CANVAS_W;
+      canvas.height = CANVAS_H;
+      const ctx = canvas.getContext("2d")!;
 
-    ctx.fillStyle = style.frameColor;
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = style.frameColor;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    if (style.sepia > 0) {
-      ctx.filter = `sepia(${style.sepia})`;
-    }
+      if (style.sepia > 0) ctx.filter = `sepia(${style.sepia})`;
 
-    const scale = Math.max(PHOTO_W / item.img.naturalWidth, PHOTO_H / item.img.naturalHeight);
-    const w = item.img.naturalWidth * scale;
-    const h = item.img.naturalHeight * scale;
-    const photoX = FRAME_BORDER + (PHOTO_W - w) / 2;
-    const photoY = FRAME_BORDER + (PHOTO_H - h) / 2;
-    ctx.drawImage(item.img, photoX, photoY, w, h);
+      const scale = Math.max(PHOTO_W / item.img.naturalWidth, PHOTO_H / item.img.naturalHeight);
+      const w = item.img.naturalWidth * scale;
+      const h = item.img.naturalHeight * scale;
+      const photoX = FRAME_BORDER + (PHOTO_W - w) / 2;
+      const photoY = FRAME_BORDER + (PHOTO_H - h) / 2;
+      ctx.drawImage(item.img, photoX, photoY, w, h);
+      ctx.filter = "none";
 
-    ctx.filter = "none";
+      ctx.strokeStyle = style.frameColor === "#ffffff" ? "#e0e0e0" : "rgba(0,0,0,0.15)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(FRAME_BORDER, FRAME_BORDER, PHOTO_W, PHOTO_H);
 
-    ctx.strokeStyle = style.frameColor === "#ffffff" ? "#e0e0e0" : "rgba(0,0,0,0.15)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(FRAME_BORDER, FRAME_BORDER, PHOTO_W, PHOTO_H);
-
-    if (caption) {
-      ctx.fillStyle = style.frameColor === "#2a2a2a" ? "#e0e0e0" : "#333333";
-      ctx.font = `${captionSize}px "Bradley Hand", "Marker Felt", cursive, sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      const captionY = FRAME_BORDER + PHOTO_H + CAPTION_H / 2;
-      const maxWidth = CANVAS_W - FRAME_BORDER * 2;
-      ctx.fillText(caption, CANVAS_W / 2, captionY, maxWidth);
-    }
-
-    return canvas;
-  }
+      if (caption) {
+        ctx.fillStyle = style.frameColor === "#2a2a2a" ? "#e0e0e0" : "#333333";
+        ctx.font = `${captionSize}px "Bradley Hand", "Marker Felt", cursive, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const captionY = FRAME_BORDER + PHOTO_H + CAPTION_H / 2;
+        const maxWidth = CANVAS_W - FRAME_BORDER * 2;
+        ctx.fillText(caption, CANVAS_W / 2, captionY, maxWidth);
+      }
+      return canvas;
+    },
+    [style, caption, captionSize],
+  );
 
   useEffect(() => {
     images.forEach((item, i) => {
       const preview = previewRefs.current[i];
       if (!preview) return;
-      const canvas = renderPolaroid(item, i);
+      const canvas = renderPolaroid(item);
       preview.width = canvas.width;
       preview.height = canvas.height;
       const ctx = preview.getContext("2d")!;
       ctx.drawImage(canvas, 0, 0);
     });
-  }, [images, frameStyle, caption, captionSize]);
+  }, [images, renderPolaroid]);
 
   async function download(format: "jpg" | "png") {
     if (!images.length) return;
@@ -127,14 +129,14 @@ export function PolaroidCard() {
     setMessage("Membuat polaroid...");
     try {
       for (let i = 0; i < images.length; i++) {
-        const canvas = renderPolaroid(images[i], i);
+        const canvas = renderPolaroid(images[i]!);
         const mime = format === "png" ? "image/png" : "image/jpeg";
         const blob = await canvasToBlob(canvas, mime, 0.92);
         const fileName = `polaroid-${i + 1}.${format}`;
         downloadBlob(blob, fileName);
         try {
           await saveResult({ category: "photo", tool: "polaroid", fileName, blob });
-        } catch {}
+        } catch { /* Riwayat opsional */ }
       }
       setPhase("done");
       setMessage(`${images.length} polaroid diunduh.`);
@@ -145,63 +147,77 @@ export function PolaroidCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Polaroid</CardTitle>
-        <CardDescription>
-          Beri bingkai polaroid pada foto Anda. Tambahkan caption dan pilih gaya bingkai.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <FileDropzone
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          onFiles={handleFiles}
-          hint="Pilih satu atau beberapa foto"
-        />
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
+      {/* Form column (left) */}
+      <Card className="border shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Polaroid</CardTitle>
+          <CardDescription>
+            Beri bingkai polaroid pada foto Anda. Tambahkan caption dan pilih gaya bingkai.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Photo strip */}
+          {images.length ? (
+            <div className="space-y-2">
+              <Label>Foto terpilih ({images.length})</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {images.map((item) => (
+                  <div key={item.id} className="relative aspect-square overflow-hidden rounded-lg border bg-muted/30">
+                    <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+                    <button
+                      className="absolute right-1 top-1 flex size-5 items-center justify-center rounded bg-black/75 text-white"
+                      onClick={() => removeImage(item.id)}
+                      aria-label="Hapus foto"
+                    >
+                      <X className="size-2.5" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-muted-foreground hover:border-foreground/40 hover:text-foreground"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Plus className="size-4" />
+                  <span className="text-[10px] font-semibold">Tambah</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <FileDropzone
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onFiles={handleFiles}
+              hint="Pilih satu atau beberapa foto"
+            />
+          )}
 
-        {images.length ? (
+          {/* Frame style — visual picker */}
           <div className="space-y-2">
-            <Label>Foto terpilih ({images.length})</Label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {images.map((item, i) => (
-                <div key={`${item.name}-${i}`} className="relative rounded-lg border bg-card p-1">
-                  <img
-                    src={item.dataUrl}
-                    alt={`Foto ${i + 1}`}
-                    className="h-20 w-full rounded object-cover"
+            <Label>Gaya bingkai</Label>
+            <div className="grid grid-cols-5 gap-2">
+              {FRAME_STYLES.map((s) => (
+                <button
+                  key={s.value}
+                  className={`flex flex-col items-center gap-1.5 rounded-lg border p-2 transition ${
+                    frameStyle === s.value
+                      ? "border-primary bg-muted/40"
+                      : "border-border bg-card hover:border-foreground/30"
+                  }`}
+                  onClick={() => setFrameStyle(s.value)}
+                  aria-label={s.label}
+                >
+                  <span
+                    className="size-7 rounded border border-black/10"
+                    style={{ backgroundColor: s.frameColor }}
                   />
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    aria-label={`Hapus foto ${i + 1}`}
-                    className="absolute right-0.5 top-0.5 size-5"
-                    onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
-                  >
-                    <X className="size-2.5" />
-                  </Button>
-                </div>
+                  <span className="text-[10px] font-semibold leading-tight">{s.label}</span>
+                </button>
               ))}
             </div>
           </div>
-        ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>Gaya bingkai</Label>
-            <Select value={frameStyle} onValueChange={setFrameStyle}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FRAME_STYLES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Caption */}
           <div className="space-y-1.5">
             <Label htmlFor="polaroid-caption">Caption (opsional)</Label>
             <Input
@@ -212,57 +228,82 @@ export function PolaroidCard() {
               maxLength={40}
             />
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <Label>Ukuran teks caption: {captionSize}px</Label>
-          <Slider
-            min={14}
-            max={36}
-            step={2}
-            value={[captionSize]}
-            onValueChange={([v]) => setCaptionSize(v ?? 24)}
-          />
-        </div>
-
-        {images.length ? (
+          {/* Caption size */}
           <div className="space-y-2">
-            <Label>Preview polaroid</Label>
-            <div className="flex flex-wrap gap-4">
-              {images.map((item, i) => (
+            <div className="flex items-center justify-between">
+              <Label>Ukuran teks caption</Label>
+              <span className="text-xs font-bold text-muted-foreground">{captionSize}px</span>
+            </div>
+            <Slider
+              min={14}
+              max={36}
+              step={2}
+              value={[captionSize]}
+              onValueChange={([v]) => setCaptionSize(v ?? 24)}
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2 border-t border-dashed border-border pt-4">
+            <Button disabled={!images.length || phase === "working"} onClick={() => download("jpg")}>
+              <Download className="size-4" /> Download JPG
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={!images.length || phase === "working"}
+              onClick={() => download("png")}
+            >
+              <Download className="size-4" /> PNG
+            </Button>
+            {images.length ? (
+              <>
+                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  <ImagePlus className="size-4" /> Tambah Foto
+                </Button>
+                <Button variant="ghost" size="icon" aria-label="Hapus semua" onClick={clearAll}>
+                  <Trash2 className="size-4" />
+                </Button>
+              </>
+            ) : null}
+          </div>
+
+          <ProcessState phase={phase} message={message} />
+        </CardContent>
+      </Card>
+
+      {/* Preview column (right) */}
+      <Card className="border shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Pratinjau Polaroid</CardTitle>
+          <CardDescription>
+            {images.length
+              ? `${images.length} foto · ${style.label}`
+              : "Unggah foto untuk melihat pratinjau polaroid."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex min-h-[400px] flex-wrap items-center justify-center gap-4 rounded-xl bg-muted/40 p-4">
+            {!images.length ? (
+              <div className="text-center text-sm text-muted-foreground">
+                <Plus className="mx-auto mb-2 size-8 opacity-40" />
+                Pratinjau akan muncul di sini setelah foto diunggah.
+              </div>
+            ) : (
+              images.map((item, i) => (
                 <canvas
-                  key={`${item.name}-${i}`}
+                  key={item.id}
                   ref={(el) => {
                     if (el) previewRefs.current[i] = el;
                   }}
                   className="h-auto rounded-lg shadow-md"
-                  style={{ maxHeight: "300px", width: "auto" }}
+                  style={{ maxHeight: "320px", width: "auto" }}
                 />
-              ))}
-            </div>
+              ))
+            )}
           </div>
-        ) : null}
-
-        <div className="flex flex-wrap gap-2">
-          <Button disabled={!images.length || phase === "working"} onClick={() => download("jpg")}>
-            Download JPG
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={!images.length || phase === "working"}
-            onClick={() => download("png")}
-          >
-            Download PNG
-          </Button>
-          {images.length ? (
-            <Button variant="ghost" onClick={() => setImages([])}>
-              Kosongkan
-            </Button>
-          ) : null}
-        </div>
-
-        <ProcessState phase={phase} message={message} />
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
