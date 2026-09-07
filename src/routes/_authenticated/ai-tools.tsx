@@ -146,7 +146,7 @@ function AiToolCard({ kind }: { kind: ToolKind }) {
         const res = await fetch(endpoint, {
           method: "POST",
           body: form,
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
         });
         const payload = (await res.json().catch(() => ({}))) as { image?: string; error?: string };
         if (!res.ok || !payload.image) {

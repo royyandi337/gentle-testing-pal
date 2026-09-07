@@ -130,7 +130,7 @@ async function callAiEndpoint(
   const res = await fetch(path, {
     method: "POST",
     body: form,
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
   });
   const json = (await res.json().catch(() => ({}))) as { image?: string; error?: string };
   if (!res.ok || !json.image) {
