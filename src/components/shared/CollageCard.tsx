@@ -65,7 +65,7 @@ export function CollageCard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLCanvasElement>(null);
 
-  const layoutDef = LAYOUTS.find((l) => l.id === layoutId) ?? LAYOUTS[0];
+  const layoutDef = LAYOUTS.find((l) => l.id === layoutId) ?? LAYOUTS[0]!;
   const slots = layoutDef.slots;
   const maxPhotos = 9;
 

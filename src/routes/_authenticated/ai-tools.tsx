@@ -57,7 +57,7 @@ async function autoCropImage(file: File): Promise<string> {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
-      const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+      const r = data[i]!, g = data[i + 1]!, b = data[i + 2]!, a = data[i + 3]!;
       if (a < 10) continue;
       const brightness = (r + g + b) / 3;
       if (brightness < 245) {

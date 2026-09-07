@@ -145,7 +145,7 @@ export function LabelPrintCard() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [sheetInfo, setSheetInfo] = useState<{ pages: number; perPage: number }>();
 
-  const layoutDef = LAYOUTS.find((l) => l.value === layout) ?? LAYOUTS[0];
+  const layoutDef = LAYOUTS.find((l) => l.value === layout) ?? LAYOUTS[0]!;
 
   const isLandscape = orientation === "landscape";
   const pageW = isLandscape ? PAGE_H : PAGE_W;

@@ -37,7 +37,7 @@ export function PolaroidCard() {
   const previewRefs = useRef<HTMLCanvasElement[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const style = FRAME_STYLES.find((s) => s.value === frameStyle) ?? FRAME_STYLES[0];
+  const style = FRAME_STYLES.find((s) => s.value === frameStyle) ?? FRAME_STYLES[0]!;
 
   const handleFiles = useCallback(async (files: File[]) => {
     const valid = files.filter((f) => f.type.startsWith("image/"));

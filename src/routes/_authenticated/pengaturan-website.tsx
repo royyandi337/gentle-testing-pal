@@ -52,8 +52,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/pengaturan-website")({
   ssr: false,
-  beforeLoad: async ({ server }) => {
-    if (server) return;
+  beforeLoad: async () => {
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) throw redirect({ to: "/auth" });
 
@@ -122,7 +121,7 @@ const ACCENT_PRESETS = [
 const GATEWAYS = ["Midtrans", "Xendit", "Doku", "Manual Transfer"];
 
 function PengaturanWebsitePage() {
-  const { userId } = Route.useRouteContext();
+  const { userId } = Route.useRouteContext() as { userId: string };
   const [settings, setSettings] = useState<SiteSettings>({
     site_name: "",
     site_name_main: "ROY DIGITAL",

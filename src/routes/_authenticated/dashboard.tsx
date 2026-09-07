@@ -77,7 +77,7 @@ function Dashboard() {
   const creditLabel = isPremium ? "Tak terbatas" : loading ? "…" : `${remaining} / ${dailyLimit}`;
   const adLabel = tier === "trial" ? "Tampil" : "Tersembunyi";
   const tierLabel = loading ? "…" : (tier ?? "trial");
-  const tierBenefit = TIER_BENEFITS[tier ?? "trial"] ?? TIER_BENEFITS.trial!;
+  const tierBenefit = TIER_BENEFITS[tier ?? "trial"] ?? TIER_BENEFITS["trial"]!;
 
   return (
     <div className="mx-auto max-w-[1000px]">
