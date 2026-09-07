@@ -81,7 +81,9 @@ export function PageHeader({
           </div>
         ) : null}
         <div>
-          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">{title}</h1>
+          <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            {title}
+          </h1>
           {description ? <p className="mt-0.5 text-[13.5px] text-slate">{description}</p> : null}
         </div>
       </div>

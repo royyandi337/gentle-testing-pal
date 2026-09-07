@@ -142,7 +142,7 @@ function AkunPage() {
 
   return (
     <div>
-      <PageHeader title="Akun" description="Kelola informasi profil dan keamanan akun Anda." />
+      <PageHeader title="Akun" description="Kelola informasi profil dan keamanan akun Anda." icon={UserIcon} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

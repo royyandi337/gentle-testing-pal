@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { FileText } from "lucide-react";
 import { PageHeader } from "@/components/layout/AppShell";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { PdfToWordCard } from "@/components/shared/PdfToWordCard";
@@ -125,6 +126,7 @@ function PdfToolsPage() {
       <PageHeader
         title="PDF Tools"
         description="Semua kebutuhan dokumen PDF dalam satu tempat — konversi, kelola, dan amankan."
+        icon={FileText}
       />
 
       <ProcessState phase={phase} message={message} progress={progress} />

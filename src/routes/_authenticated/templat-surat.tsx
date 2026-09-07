@@ -619,6 +619,7 @@ function TemplatSuratPage() {
       <PageHeader
         title="Templat Surat Menyurat"
         description="Pilih templat, isi hanya bagian yang kosong — sisanya sudah rapi otomatis. Bisa juga buat templat suratmu sendiri."
+        icon={FileEdit}
       />
 
       {showAddNew && (

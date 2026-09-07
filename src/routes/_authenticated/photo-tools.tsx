@@ -79,13 +79,7 @@ const TABS = [
   { value: "polaroid", label: "Polaroid", icon: Camera },
 ] as const;
 
-function SegmentedTabs({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
+function SegmentedTabs({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div className="tool-tabs">
       {TABS.map((tab) => (
@@ -175,7 +169,11 @@ function BatchBottomBar({
 }) {
   return (
     <div className="compress-bottombar">
-      <button className="btn-secondary-line" onClick={onAdd} style={{ flex: "0 0 auto", padding: "11px 16px" }}>
+      <button
+        className="btn-secondary-line"
+        onClick={onAdd}
+        style={{ flex: "0 0 auto", padding: "11px 16px" }}
+      >
         <ImagePlus className="size-4" /> Pilih Gambar
       </button>
       <button
@@ -186,7 +184,12 @@ function BatchBottomBar({
       >
         <Trash2 className="size-4" />
       </button>
-      <button className="btn-action-mockup" disabled={disabled} onClick={onProcess} style={{ flex: 1 }}>
+      <button
+        className="btn-action-mockup"
+        disabled={disabled}
+        onClick={onProcess}
+        style={{ flex: 1 }}
+      >
         <Download className="size-4" /> {processLabel}
       </button>
     </div>
@@ -287,7 +290,10 @@ function ResizePanel() {
           targetH = Math.max(1, Math.round((img.naturalHeight * percent) / 100));
         } else {
           targetW = Math.max(1, width);
-          targetH = height > 0 ? height : Math.max(1, Math.round((img.naturalHeight / img.naturalWidth) * targetW));
+          targetH =
+            height > 0
+              ? height
+              : Math.max(1, Math.round((img.naturalHeight / img.naturalWidth) * targetW));
         }
         const canvas = document.createElement("canvas");
         canvas.width = targetW;
@@ -305,7 +311,9 @@ function ResizePanel() {
         updated.push({ ...item, done: true, resultLabel: label, blob });
         try {
           await saveResult({ category: "photo", tool: "resize", fileName, blob });
-        } catch { /* Riwayat opsional */ }
+        } catch {
+          /* Riwayat opsional */
+        }
         done += 1;
         tool.setMessage(`Memproses ${done}/${tool.items.length} foto...`);
       }
@@ -357,17 +365,33 @@ function ResizePanel() {
               <Label>Skala</Label>
               <span className="value-badge">{percent}%</span>
             </div>
-            <Slider min={10} max={100} step={5} value={[percent]} onValueChange={([v]) => setPercent(v ?? 75)} />
+            <Slider
+              min={10}
+              max={100}
+              step={5}
+              value={[percent]}
+              onValueChange={([v]) => setPercent(v ?? 75)}
+            />
           </div>
         ) : (
           <div className="flex flex-1 gap-3">
             <div className="flex-1 space-y-1.5">
               <Label>Lebar (px)</Label>
-              <Input type="number" min={1} value={width} onChange={(e) => setWidth(Number(e.target.value))} />
+              <Input
+                type="number"
+                min={1}
+                value={width}
+                onChange={(e) => setWidth(Number(e.target.value))}
+              />
             </div>
             <div className="flex-1 space-y-1.5">
               <Label>Tinggi (0=auto)</Label>
-              <Input type="number" min={0} value={height} onChange={(e) => setHeight(Number(e.target.value))} />
+              <Input
+                type="number"
+                min={0}
+                value={height}
+                onChange={(e) => setHeight(Number(e.target.value))}
+              />
             </div>
           </div>
         )}
@@ -429,7 +453,9 @@ function CompressPanel() {
         updated.push({ ...item, done: true, resultLabel: label, blob });
         try {
           await saveResult({ category: "photo", tool: "compress", fileName, blob });
-        } catch { /* Riwayat opsional */ }
+        } catch {
+          /* Riwayat opsional */
+        }
         done += 1;
         tool.setMessage(`Memproses ${done}/${tool.items.length} foto...`);
       }
@@ -463,7 +489,13 @@ function CompressPanel() {
             <Label>Tingkat Kompresi</Label>
             <span className="value-badge">{quality}%</span>
           </div>
-          <Slider min={10} max={100} step={5} value={[quality]} onValueChange={([v]) => setQuality(v ?? 60)} />
+          <Slider
+            min={10}
+            max={100}
+            step={5}
+            value={[quality]}
+            onValueChange={([v]) => setQuality(v ?? 60)}
+          />
         </div>
       </div>
 
@@ -523,7 +555,9 @@ function ConvertPanel() {
         updated.push({ ...item, done: true, resultLabel: label, blob });
         try {
           await saveResult({ category: "photo", tool: "convert", fileName, blob });
-        } catch { /* Riwayat opsional */ }
+        } catch {
+          /* Riwayat opsional */
+        }
         done += 1;
         tool.setMessage(`Memproses ${done}/${tool.items.length} foto...`);
       }
@@ -603,14 +637,21 @@ function RotatePanel() {
   function addFiles(files: File[]) {
     const newItems = files
       .filter((f) => f.type.startsWith("image/"))
-      .map((f) => ({ id: `${f.name}-${Date.now()}-${Math.random()}`, file: f, url: URL.createObjectURL(f), angle: 0 }));
+      .map((f) => ({
+        id: `${f.name}-${Date.now()}-${Math.random()}`,
+        file: f,
+        url: URL.createObjectURL(f),
+        angle: 0,
+      }));
     setItems((prev) => [...prev, ...newItems]);
   }
   function removeItem(id: string) {
     setItems((prev) => prev.filter((item) => item.id !== id));
   }
   function rotateItem(id: string, delta: number) {
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, angle: item.angle + delta } : item)));
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, angle: item.angle + delta } : item)),
+    );
   }
   function resetItem(id: string) {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, angle: 0 } : item)));
@@ -651,7 +692,9 @@ function RotatePanel() {
         downloadBlob(blob, fileName);
         try {
           await saveResult({ category: "photo", tool: "rotate", fileName, blob });
-        } catch { /* Riwayat opsional */ }
+        } catch {
+          /* Riwayat opsional */
+        }
         done += 1;
         setMessage(`Memproses ${done}/${items.length} foto...`);
       }
@@ -683,7 +726,11 @@ function RotatePanel() {
           <div className="rotate-grid">
             {items.map((item) => (
               <div key={item.id} className="rotate-card-mockup">
-                <button className="cc-remove" onClick={() => removeItem(item.id)} aria-label="Hapus foto">
+                <button
+                  className="cc-remove"
+                  onClick={() => removeItem(item.id)}
+                  aria-label="Hapus foto"
+                >
                   <X />
                 </button>
                 <p className="cc-name">{item.file.name}</p>
@@ -710,13 +757,27 @@ function RotatePanel() {
             ))}
           </div>
           <div className="compress-bottombar">
-            <button className="btn-secondary-line" onClick={() => fileInputRef.current?.click()} style={{ flex: "0 0 auto", padding: "11px 16px" }}>
+            <button
+              className="btn-secondary-line"
+              onClick={() => fileInputRef.current?.click()}
+              style={{ flex: "0 0 auto", padding: "11px 16px" }}
+            >
               <ImagePlus className="size-4" /> Pilih Gambar
             </button>
-            <button className="icon-btn" onClick={clearAll} aria-label="Hapus semua" style={{ flex: "0 0 auto" }}>
+            <button
+              className="icon-btn"
+              onClick={clearAll}
+              aria-label="Hapus semua"
+              style={{ flex: "0 0 auto" }}
+            >
               <Trash2 className="size-4" />
             </button>
-            <button className="btn-action-mockup" disabled={phase === "working"} onClick={applyAll} style={{ flex: 1 }}>
+            <button
+              className="btn-action-mockup"
+              disabled={phase === "working"}
+              onClick={applyAll}
+              style={{ flex: 1 }}
+            >
               <Download className="size-4" /> Terapkan & Unduh Semua
             </button>
           </div>

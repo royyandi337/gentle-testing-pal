@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { FileType2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/AppShell";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { PdfToWordCard } from "@/components/shared/PdfToWordCard";
@@ -72,6 +73,7 @@ function WordToolsPage() {
       <PageHeader
         title="Word Tools"
         description="Konversi dan kelola dokumen Word (.docx) langsung dari browser."
+        icon={FileType2}
       />
 
       <ProcessState phase={phase} message={message} />

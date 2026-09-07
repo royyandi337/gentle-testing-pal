@@ -215,6 +215,7 @@ function PengaturanWebsitePage() {
       <PageHeader
         title="Pengaturan Website"
         description="Kelola informasi website, lihat pengguna, dan pantau statistik penggunaan."
+        icon={Settings}
       >
         <Badge variant="secondary" className="gap-1">
           <Shield className="size-3" /> Owner

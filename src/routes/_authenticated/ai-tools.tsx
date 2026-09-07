@@ -268,6 +268,7 @@ function AiToolsPage() {
       <PageHeader
         title="AI Tools"
         description="Perjelas foto, hapus background, dan auto-crop otomatis — diproses aman lewat server."
+        icon={Wand2}
       />
       <div className="grid gap-5 lg:grid-cols-3">
         <AiToolCard kind="enhance" />

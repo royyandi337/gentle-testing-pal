@@ -135,6 +135,7 @@ function QrCodePage() {
       <PageHeader
         title="QR Code Generator"
         description="Buat QR code untuk URL, teks, email, nomor telepon, atau kredensial WiFi."
+        icon={QrCode}
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">

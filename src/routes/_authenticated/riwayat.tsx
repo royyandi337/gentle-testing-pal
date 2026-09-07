@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, ExternalLink, Trash2 } from "lucide-react";
+import { Download, ExternalLink, Trash2, History } from "lucide-react";
 import { PageHeader } from "@/components/layout/AppShell";
 import { EmptyState } from "@/components/shared/ProcessState";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +79,7 @@ function RiwayatPage() {
       <PageHeader
         title="Riwayat"
         description="Semua hasil pekerjaan Anda tersimpan aman dan hanya dapat diakses oleh Anda."
+        icon={History}
       />
 
       <div className="mb-4 flex flex-wrap gap-2">
