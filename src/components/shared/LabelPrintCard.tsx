@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X, Printer, FileText, Image as ImageIcon } from "lucide-react";
+import { X, Printer, FileText, Image as ImageIcon, ZoomIn, ZoomOut } from "lucide-react";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -137,6 +138,8 @@ export function LabelPrintCard() {
   const [items, setItems] = useState<Cropped[]>([]);
   const [layout, setLayout] = useState<string>("4");
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
+  const [margin, setMargin] = useState(40);
+  const [zoom, setZoom] = useState(1);
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | undefined>(undefined);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -161,8 +164,8 @@ export function LabelPrintCard() {
   } else {
     cardW = Math.round(layoutDef.cardWmm * MM_TO_PX);
     cardH = Math.round(layoutDef.cardHmm * MM_TO_PX);
-    const availW = pageW - PAGE_MARGIN * 2;
-    const availH = pageH - PAGE_MARGIN * 2;
+    const availW = pageW - margin * 2;
+    const availH = pageH - margin * 2;
     const gap = CROP_MARK_GAP * 2 + CROP_MARK_LEN;
     cols = Math.floor((availW + gap) / (cardW + gap));
     rows = Math.floor((availH + gap) / (cardH + gap));
@@ -182,8 +185,8 @@ export function LabelPrintCard() {
       ctx.fillRect(0, 0, pageW, pageH);
 
       if (layoutDef.type === "grid") {
-        const cellW = (pageW - PAGE_MARGIN * 2) / cols;
-        const cellH = (pageH - PAGE_MARGIN * 2) / rows;
+        const cellW = (pageW - margin * 2) / cols;
+        const cellH = (pageH - margin * 2) / rows;
         const slice = items.slice(p * perPage, (p + 1) * perPage);
         for (let i = 0; i < slice.length; i += 1) {
           const item = slice[i]!;
@@ -196,8 +199,8 @@ export function LabelPrintCard() {
           const scale = Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight);
           const w = img.naturalWidth * scale;
           const h = img.naturalHeight * scale;
-          const x = PAGE_MARGIN + col * cellW + (cellW - w) / 2;
-          const y = PAGE_MARGIN + row * cellH + (cellH - h) / 2;
+          const x = margin + col * cellW + (cellW - w) / 2;
+          const y = margin + row * cellH + (cellH - h) / 2;
           ctx.drawImage(img, x, y, w, h);
         }
       } else {
@@ -227,7 +230,7 @@ export function LabelPrintCard() {
       pages.push(canvas);
     }
     return pages;
-  }, [items, pageCount, pageW, pageH, layoutDef, cols, rows, perPage, cardW, cardH]);
+  }, [items, pageCount, pageW, pageH, layoutDef, cols, rows, perPage, cardW, cardH, margin]);
 
   // Live A4 sheet preview
   useEffect(() => {
@@ -242,7 +245,7 @@ export function LabelPrintCard() {
       if (cancelled || !host) return;
       host.replaceChildren();
       for (const canvas of pages) {
-        canvas.style.maxHeight = "460px";
+        canvas.style.maxHeight = `${460 * zoom}px`;
         canvas.style.width = "auto";
         canvas.style.maxWidth = "100%";
         canvas.className = "rounded-xl border shadow-sm bg-white";
@@ -251,7 +254,7 @@ export function LabelPrintCard() {
       setSheetInfo({ pages: pages.length, perPage });
     })();
     return () => { cancelled = true; };
-  }, [renderPages, items.length, perPage]);
+  }, [renderPages, items.length, perPage, zoom]);
 
   async function handleFiles(files: File[]) {
     const images = files.filter((f) => f.type.startsWith("image/"));
@@ -406,6 +409,20 @@ export function LabelPrintCard() {
             </div>
           </div>
 
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Margin kertas</Label>
+              <span className="text-xs font-medium text-muted-foreground">{margin}px</span>
+            </div>
+            <Slider
+              min={0}
+              max={80}
+              step={5}
+              value={[margin]}
+              onValueChange={([v]) => setMargin(v ?? 40)}
+            />
+          </div>
+
           {items.length ? (
             <p className="text-xs text-muted-foreground">
               {items.length} gambar → {pageCount} halaman A4 ({perPage} per halaman).
@@ -447,7 +464,7 @@ export function LabelPrintCard() {
         <CardContent>
           <div
             ref={sheetRef}
-            className="flex min-h-[400px] flex-col items-center justify-center gap-4 rounded-xl bg-muted/40 p-4"
+            className="flex min-h-[400px] flex-col items-center justify-center gap-4 overflow-auto rounded-xl bg-muted/40 p-4"
           >
             {!items.length ? (
               <div className="text-center text-sm text-muted-foreground">
@@ -456,6 +473,38 @@ export function LabelPrintCard() {
               </div>
             ) : null}
           </div>
+
+          {items.length ? (
+            <div className="mt-3 flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Perkecil"
+                onClick={() => setZoom((z) => Math.max(0.5, Math.round((z - 0.1) * 10) / 10))}
+              >
+                <ZoomOut className="size-4" />
+              </Button>
+              <span className="w-14 text-center text-xs font-medium tabular-nums text-muted-foreground">
+                {Math.round(zoom * 100)}%
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Perbesar"
+                onClick={() => setZoom((z) => Math.min(2, Math.round((z + 0.1) * 10) / 10))}
+              >
+                <ZoomIn className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto"
+                onClick={() => setZoom(1)}
+              >
+                Reset
+              </Button>
+            </div>
+          ) : null}
           {sheetInfo ? (
             <p className="mt-3 text-xs text-muted-foreground">
               {sheetInfo.pages} halaman · {sheetInfo.perPage} resi per halaman
