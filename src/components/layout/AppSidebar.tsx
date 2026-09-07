@@ -41,6 +41,7 @@ import { toast } from "sonner";
 import { CreditIndicator } from "@/components/shared/CreditIndicator";
 import { AdSlot } from "@/components/shared/AdSlot";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useCredits } from "@/hooks/useCredits";
 import { useEffect, useState } from "react";
 
 export const NAV_GROUPS = [

@@ -34,7 +34,8 @@ import {
 
 export const Route = createFileRoute("/_authenticated/pengaturan-website")({
   ssr: false,
-  beforeLoad: async () => {
+  beforeLoad: async ({ server }) => {
+    if (server) return;
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) throw redirect({ to: "/auth" });
 
