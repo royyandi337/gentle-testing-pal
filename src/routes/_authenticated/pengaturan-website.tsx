@@ -801,4 +801,3 @@ function SaveButton({ onClick, saving }: { onClick: () => void; saving: boolean 
   );
 }
 
-export default PengaturanWebsitePage;
