@@ -10,6 +10,8 @@ import {
   Wand2,
   LogOut,
   ChevronsUpDown,
+  FileEdit,
+  Crown,
 } from "lucide-react";
 import {
   Sidebar,
@@ -59,6 +61,7 @@ export const NAV_GROUPS = [
     items: [
       { to: "/pdf-tools", label: "PDF Tools", icon: FileText },
       { to: "/word-tools", label: "Word Tools", icon: FileType2 },
+      { to: "/templat-surat", label: "Templat Surat", icon: FileEdit },
     ],
   },
   {
@@ -73,7 +76,16 @@ export function AppSidebar() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const settings = useSiteSettings();
+  const { tier, remaining, loading: creditsLoading } = useCredits();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  const isPremium = tier === "premium" || remaining === -1;
+  const tierLabel = creditsLoading ? "…" : (tier ?? "trial");
+  const tierBenefit = isPremium
+    ? "Kredit AI tak terbatas, tanpa iklan, dukungan eksklusif."
+    : tier === "regular"
+      ? "100 kredit AI harian, iklan disembunyikan, dukungan prioritas."
+      : "10 kredit AI harian, iklan tampil, dukungan komunitas.";
 
   const email = user?.email ?? "";
   const initials = email.slice(0, 2).toUpperCase() || "RD";
@@ -167,6 +179,17 @@ export function AppSidebar() {
       </div>
 
       <SidebarFooter className="border-t border-sidebar-border">
+        <div className="mx-2 mb-2 rounded-xl border border-white/10 bg-white/[.05] px-3 py-2.5 group-data-[collapsible=icon]:hidden">
+          <div className="flex items-center gap-2">
+            <Crown className="size-4 text-accent" />
+            <span className="text-[12.5px] font-semibold text-white">
+              Anda di paket {tierLabel}
+            </span>
+          </div>
+          <p className="mt-1 text-[11px] leading-relaxed text-sidebar-foreground/60">
+            {tierBenefit}
+          </p>
+        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>

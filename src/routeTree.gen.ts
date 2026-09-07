@@ -22,6 +22,7 @@ import { Route as AuthenticatedPengaturanWebsiteRouteImport } from './routes/_au
 import { Route as AuthenticatedPhotoToolsRouteImport } from './routes/_authenticated/photo-tools'
 import { Route as AuthenticatedQrCodeRouteImport } from './routes/_authenticated/qr-code'
 import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
+import { Route as AuthenticatedTemplatSuratRouteImport } from './routes/_authenticated/templat-surat'
 import { Route as AuthenticatedWordToolsRouteImport } from './routes/_authenticated/word-tools'
 import { Route as ApiEnhanceImageRouteImport } from './routes/api/enhance-image'
 import { Route as ApiRemoveBackgroundRouteImport } from './routes/api/remove-background'
@@ -91,6 +92,12 @@ const AuthenticatedRiwayatRoute = AuthenticatedRiwayatRouteImport.update({
   path: '/riwayat',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTemplatSuratRoute =
+  AuthenticatedTemplatSuratRouteImport.update({
+    id: '/templat-surat',
+    path: '/templat-surat',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedWordToolsRoute = AuthenticatedWordToolsRouteImport.update({
   id: '/word-tools',
   path: '/word-tools',
@@ -120,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/photo-tools': typeof AuthenticatedPhotoToolsRoute
   '/qr-code': typeof AuthenticatedQrCodeRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
+  '/templat-surat': typeof AuthenticatedTemplatSuratRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
   '/api/enhance-image': typeof ApiEnhanceImageRoute
   '/api/remove-background': typeof ApiRemoveBackgroundRoute
@@ -137,6 +145,7 @@ export interface FileRoutesByTo {
   '/photo-tools': typeof AuthenticatedPhotoToolsRoute
   '/qr-code': typeof AuthenticatedQrCodeRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
+  '/templat-surat': typeof AuthenticatedTemplatSuratRoute
   '/word-tools': typeof AuthenticatedWordToolsRoute
   '/api/enhance-image': typeof ApiEnhanceImageRoute
   '/api/remove-background': typeof ApiRemoveBackgroundRoute
@@ -156,6 +165,7 @@ export interface FileRoutesById {
   '/_authenticated/photo-tools': typeof AuthenticatedPhotoToolsRoute
   '/_authenticated/qr-code': typeof AuthenticatedQrCodeRoute
   '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
+  '/_authenticated/templat-surat': typeof AuthenticatedTemplatSuratRoute
   '/_authenticated/word-tools': typeof AuthenticatedWordToolsRoute
   '/api/enhance-image': typeof ApiEnhanceImageRoute
   '/api/remove-background': typeof ApiRemoveBackgroundRoute
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/photo-tools'
     | '/qr-code'
     | '/riwayat'
+    | '/templat-surat'
     | '/word-tools'
     | '/api/enhance-image'
     | '/api/remove-background'
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
     | '/photo-tools'
     | '/qr-code'
     | '/riwayat'
+    | '/templat-surat'
     | '/word-tools'
     | '/api/enhance-image'
     | '/api/remove-background'
@@ -210,6 +222,7 @@ export interface FileRouteTypes {
     | '/_authenticated/photo-tools'
     | '/_authenticated/qr-code'
     | '/_authenticated/riwayat'
+    | '/_authenticated/templat-surat'
     | '/_authenticated/word-tools'
     | '/api/enhance-image'
     | '/api/remove-background'
@@ -317,6 +330,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRiwayatRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/templat-surat': {
+      id: '/_authenticated/templat-surat'
+      path: '/templat-surat'
+      fullPath: '/templat-surat'
+      preLoaderRoute: typeof AuthenticatedTemplatSuratRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/word-tools': {
       id: '/_authenticated/word-tools'
       path: '/word-tools'
@@ -351,6 +371,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPhotoToolsRoute: typeof AuthenticatedPhotoToolsRoute
   AuthenticatedQrCodeRoute: typeof AuthenticatedQrCodeRoute
   AuthenticatedRiwayatRoute: typeof AuthenticatedRiwayatRoute
+  AuthenticatedTemplatSuratRoute: typeof AuthenticatedTemplatSuratRoute
   AuthenticatedWordToolsRoute: typeof AuthenticatedWordToolsRoute
 }
 
@@ -364,6 +385,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPhotoToolsRoute: AuthenticatedPhotoToolsRoute,
   AuthenticatedQrCodeRoute: AuthenticatedQrCodeRoute,
   AuthenticatedRiwayatRoute: AuthenticatedRiwayatRoute,
+  AuthenticatedTemplatSuratRoute: AuthenticatedTemplatSuratRoute,
   AuthenticatedWordToolsRoute: AuthenticatedWordToolsRoute,
 }
 
