@@ -1,19 +1,31 @@
 import { useCallback, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { RotateCw, RotateCcw, X, Plus, Download, Trash2, ImagePlus } from "lucide-react";
+import {
+  RotateCw,
+  RotateCcw,
+  X,
+  Plus,
+  Download,
+  Trash2,
+  ImagePlus,
+  Images,
+  Maximize2,
+  FileArchive,
+  RefreshCw,
+  Package,
+  LayoutGrid,
+  Camera,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/AppShell";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { LabelPrintCard } from "@/components/shared/LabelPrintCard";
 import { CollageCard } from "@/components/shared/CollageCard";
 import { PolaroidCard } from "@/components/shared/PolaroidCard";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { canvasToBlob, downloadBlob, fileToDataUrl, loadImage } from "@/lib/image";
+import { canvasToBlob, downloadBlob, loadImage } from "@/lib/image";
 import { saveResult } from "@/lib/history";
 
 export const Route = createFileRoute("/_authenticated/photo-tools")({
@@ -55,13 +67,65 @@ function formatSize(bytes: number) {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
 }
 
-function BatchToolbar({ children }: { children: React.ReactNode }) {
+/* ===== Segmented tabs (mockup style) ===== */
+
+const TABS = [
+  { value: "resize", label: "Resize", icon: Maximize2 },
+  { value: "compress", label: "Kompres", icon: FileArchive },
+  { value: "convert", label: "Konversi", icon: RefreshCw },
+  { value: "rotate", label: "Rotasi", icon: RotateCw },
+  { value: "label", label: "Cetak Label", icon: Package },
+  { value: "kolase", label: "Kolase", icon: LayoutGrid },
+  { value: "polaroid", label: "Polaroid", icon: Camera },
+] as const;
+
+function SegmentedTabs({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
-    <div className="flex flex-wrap items-end gap-4 border-b border-dashed border-border pb-4">
-      {children}
+    <div className="tool-tabs">
+      {TABS.map((tab) => (
+        <button
+          key={tab.value}
+          className={value === tab.value ? "active" : ""}
+          onClick={() => onChange(tab.value)}
+        >
+          {tab.label}
+        </button>
+      ))}
     </div>
   );
 }
+
+/* ===== Task head (icon + title) ===== */
+
+function TaskHead({
+  icon: Icon,
+  title,
+  desc,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div className="task-head-mockup">
+      <div className="ic">
+        <Icon className="size-4" />
+      </div>
+      <div>
+        <h3 className="text-[15px] font-bold text-foreground">{title}</h3>
+        <p className="mt-0.5 text-[12.5px] text-slate">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ===== Batch card grid (mockup style) ===== */
 
 function BatchGrid({
   items,
@@ -73,40 +137,19 @@ function BatchGrid({
   onDownload: (item: BatchItem) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="compress-grid">
       {items.map((item) => (
-        <div
-          key={item.id}
-          className="relative flex flex-col gap-2 rounded-xl border bg-card p-3"
-        >
-          <button
-            className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded-md border bg-background text-muted-foreground hover:text-foreground"
-            onClick={() => onRemove(item.id)}
-            aria-label="Hapus"
-          >
-            <X className="size-3" />
+        <div key={item.id} className="batch-card-mockup">
+          <button className="cc-remove" onClick={() => onRemove(item.id)} aria-label="Hapus">
+            <X />
           </button>
-          <p className="truncate pr-6 text-xs font-semibold text-foreground">
-            {item.file.name}
-          </p>
-          <p className="-mt-1 text-[11px] text-muted-foreground">
-            {formatSize(item.file.size)}
-          </p>
-          <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg border bg-background">
-            <img src={item.url} alt={item.file.name} className="max-h-[78%] max-w-[78%] object-contain" />
+          <p className="cc-name">{item.file.name}</p>
+          <p className="cc-orig">{formatSize(item.file.size)}</p>
+          <div className="cc-thumb">
+            <img src={item.url} alt={item.file.name} />
           </div>
-          {item.done ? (
-            <p className="text-center text-xs font-bold text-green-600">{item.resultLabel}</p>
-          ) : (
-            <p className="text-center text-xs font-medium text-muted-foreground">
-              {item.resultLabel}
-            </p>
-          )}
-          <button
-            className="w-full rounded-lg bg-primary py-2 text-xs font-semibold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground"
-            disabled={!item.done}
-            onClick={() => onDownload(item)}
-          >
+          <p className={item.done ? "cc-newsize" : "cc-newsize pending"}>{item.resultLabel}</p>
+          <button className="cc-dl" disabled={!item.done} onClick={() => onDownload(item)}>
             Unduh
           </button>
         </div>
@@ -114,6 +157,8 @@ function BatchGrid({
     </div>
   );
 }
+
+/* ===== Batch bottom bar (mockup style) ===== */
 
 function BatchBottomBar({
   onAdd,
@@ -129,19 +174,26 @@ function BatchBottomBar({
   disabled: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 border-t border-dashed border-border pt-4">
-      <Button variant="outline" size="sm" onClick={onAdd}>
-        <Plus className="size-4" /> Pilih Gambar
-      </Button>
-      <Button variant="outline" size="icon" aria-label="Hapus semua" onClick={onClear}>
+    <div className="compress-bottombar">
+      <button className="btn-secondary-line" onClick={onAdd} style={{ flex: "0 0 auto", padding: "11px 16px" }}>
+        <ImagePlus className="size-4" /> Pilih Gambar
+      </button>
+      <button
+        className="icon-btn"
+        onClick={onClear}
+        aria-label="Hapus semua"
+        style={{ flex: "0 0 auto" }}
+      >
         <Trash2 className="size-4" />
-      </Button>
-      <Button className="flex-1" disabled={disabled} onClick={onProcess}>
+      </button>
+      <button className="btn-action-mockup" disabled={disabled} onClick={onProcess} style={{ flex: 1 }}>
         <Download className="size-4" /> {processLabel}
-      </Button>
+      </button>
     </div>
   );
 }
+
+/* ===== Shared batch hook ===== */
 
 function useBatchTool() {
   const [items, setItems] = useState<BatchItem[]>([]);
@@ -185,6 +237,32 @@ function useBatchTool() {
     clearAll,
   };
 }
+
+/* ===== Hidden file input ===== */
+
+function HiddenInput({
+  inputRef,
+  onFiles,
+}: {
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onFiles: (files: File[]) => void;
+}) {
+  return (
+    <input
+      ref={inputRef}
+      type="file"
+      accept="image/*"
+      multiple
+      className="hidden"
+      onChange={(e) => {
+        if (e.target.files) onFiles(Array.from(e.target.files));
+        e.target.value = "";
+      }}
+    />
+  );
+}
+
+/* ===== Resize Panel ===== */
 
 function ResizePanel() {
   const tool = useBatchTool();
@@ -248,88 +326,79 @@ function ResizePanel() {
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-4 pt-6">
-        <BatchToolbar>
-          <div className="space-y-1.5">
-            <Label>Mode</Label>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={mode === "percent" ? "default" : "outline"}
-                onClick={() => setMode("percent")}
-              >
-                Persen
-              </Button>
-              <Button
-                size="sm"
-                variant={mode === "pixel" ? "default" : "outline"}
-                onClick={() => setMode("pixel")}
-              >
-                Pixel
-              </Button>
+    <div className="task-card-mockup">
+      <TaskHead
+        icon={Maximize2}
+        title="Resize Foto"
+        desc="Kecilkan atau perbesar dimensi foto — persen atau piksel."
+      />
+
+      <div className="compress-toolbar">
+        <div className="space-y-1.5">
+          <Label>Mode</Label>
+          <div className="choice-pills">
+            <button
+              className={`choice-pill ${mode === "percent" ? "active" : ""}`}
+              onClick={() => setMode("percent")}
+            >
+              Persen
+            </button>
+            <button
+              className={`choice-pill ${mode === "pixel" ? "active" : ""}`}
+              onClick={() => setMode("pixel")}
+            >
+              Pixel
+            </button>
+          </div>
+        </div>
+        {mode === "percent" ? (
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Skala</Label>
+              <span className="value-badge">{percent}%</span>
+            </div>
+            <Slider min={10} max={100} step={5} value={[percent]} onValueChange={([v]) => setPercent(v ?? 75)} />
+          </div>
+        ) : (
+          <div className="flex flex-1 gap-3">
+            <div className="flex-1 space-y-1.5">
+              <Label>Lebar (px)</Label>
+              <Input type="number" min={1} value={width} onChange={(e) => setWidth(Number(e.target.value))} />
+            </div>
+            <div className="flex-1 space-y-1.5">
+              <Label>Tinggi (0=auto)</Label>
+              <Input type="number" min={0} value={height} onChange={(e) => setHeight(Number(e.target.value))} />
             </div>
           </div>
-          {mode === "percent" ? (
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Skala</Label>
-                <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-bold">{percent}%</span>
-              </div>
-              <Slider min={10} max={100} step={5} value={[percent]} onValueChange={([v]) => setPercent(v ?? 75)} />
-            </div>
-          ) : (
-            <div className="flex flex-1 gap-3">
-              <div className="flex-1 space-y-1.5">
-                <Label>Lebar (px)</Label>
-                <Input type="number" min={1} value={width} onChange={(e) => setWidth(Number(e.target.value))} />
-              </div>
-              <div className="flex-1 space-y-1.5">
-                <Label>Tinggi (0=auto)</Label>
-                <Input type="number" min={0} value={height} onChange={(e) => setHeight(Number(e.target.value))} />
-              </div>
-            </div>
-          )}
-          <Button disabled={!tool.items.length || tool.phase === "working"} onClick={processAll}>
-            Resize Semua
-          </Button>
-          {tool.items.length ? (
-            <Button variant="outline" onClick={tool.clearAll}>Hapus Semua</Button>
-          ) : null}
-        </BatchToolbar>
-
-        {!tool.items.length ? (
-          <FileDropzone
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            onFiles={tool.addFiles}
-            hint="Tarik & lepas file di sini — bisa banyak foto sekaligus"
-          />
-        ) : (
-          <>
-            <BatchGrid items={tool.items} onRemove={tool.removeItem} onDownload={downloadItem} />
-            <BatchBottomBar
-              onAdd={() => tool.fileInputRef.current?.click()}
-              onClear={tool.clearAll}
-              onProcess={processAll}
-              processLabel="Unduh Semua"
-              disabled={tool.phase === "working"}
-            />
-          </>
         )}
-        <input
-          ref={tool.fileInputRef}
-          type="file"
-          accept="image/*"
+      </div>
+
+      {!tool.items.length ? (
+        <FileDropzone
+          accept="image/jpeg,image/png,image/webp"
           multiple
-          className="hidden"
-          onChange={(e) => { if (e.target.files) tool.addFiles(Array.from(e.target.files)); e.target.value = ""; }}
+          onFiles={tool.addFiles}
+          hint="Tarik & lepas file di sini — bisa banyak foto sekaligus"
         />
-        <ProcessState phase={tool.phase} message={tool.message} />
-      </CardContent>
-    </Card>
+      ) : (
+        <>
+          <BatchGrid items={tool.items} onRemove={tool.removeItem} onDownload={downloadItem} />
+          <BatchBottomBar
+            onAdd={() => tool.fileInputRef.current?.click()}
+            onClear={tool.clearAll}
+            onProcess={processAll}
+            processLabel="Unduh Semua"
+            disabled={tool.phase === "working"}
+          />
+        </>
+      )}
+      <HiddenInput inputRef={tool.fileInputRef} onFiles={tool.addFiles} />
+      <ProcessState phase={tool.phase} message={tool.message} />
+    </div>
   );
 }
+
+/* ===== Compress Panel ===== */
 
 function CompressPanel() {
   const tool = useBatchTool();
@@ -381,56 +450,49 @@ function CompressPanel() {
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-4 pt-6">
-        <BatchToolbar>
-          <div className="flex-1 space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Tingkat Kompresi</Label>
-              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-bold">{quality}%</span>
-            </div>
-            <Slider min={10} max={100} step={5} value={[quality]} onValueChange={([v]) => setQuality(v ?? 60)} />
-          </div>
-          <Button disabled={!tool.items.length || tool.phase === "working"} onClick={processAll}>
-            Kompres Semua
-          </Button>
-          {tool.items.length ? (
-            <Button variant="outline" onClick={tool.clearAll}>Hapus Semua</Button>
-          ) : null}
-        </BatchToolbar>
+    <div className="task-card-mockup">
+      <TaskHead
+        icon={FileArchive}
+        title="Kompres Foto"
+        desc="Kurangi ukuran file tanpa mengurangi kualitas secara signifikan."
+      />
 
-        {!tool.items.length ? (
-          <FileDropzone
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            onFiles={tool.addFiles}
-            hint="Tarik & lepas foto di sini — JPG, PNG, WEBP, bisa banyak sekaligus"
-          />
-        ) : (
-          <>
-            <BatchGrid items={tool.items} onRemove={tool.removeItem} onDownload={downloadItem} />
-            <BatchBottomBar
-              onAdd={() => tool.fileInputRef.current?.click()}
-              onClear={tool.clearAll}
-              onProcess={processAll}
-              processLabel="Unduh Semua"
-              disabled={tool.phase === "working"}
-            />
-          </>
-        )}
-        <input
-          ref={tool.fileInputRef}
-          type="file"
-          accept="image/*"
+      <div className="compress-toolbar">
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Tingkat Kompresi</Label>
+            <span className="value-badge">{quality}%</span>
+          </div>
+          <Slider min={10} max={100} step={5} value={[quality]} onValueChange={([v]) => setQuality(v ?? 60)} />
+        </div>
+      </div>
+
+      {!tool.items.length ? (
+        <FileDropzone
+          accept="image/jpeg,image/png,image/webp"
           multiple
-          className="hidden"
-          onChange={(e) => { if (e.target.files) tool.addFiles(Array.from(e.target.files)); e.target.value = ""; }}
+          onFiles={tool.addFiles}
+          hint="Tarik & lepas foto di sini — JPG, PNG, WEBP, bisa banyak sekaligus"
         />
-        <ProcessState phase={tool.phase} message={tool.message} />
-      </CardContent>
-    </Card>
+      ) : (
+        <>
+          <BatchGrid items={tool.items} onRemove={tool.removeItem} onDownload={downloadItem} />
+          <BatchBottomBar
+            onAdd={() => tool.fileInputRef.current?.click()}
+            onClear={tool.clearAll}
+            onProcess={processAll}
+            processLabel="Unduh Semua"
+            disabled={tool.phase === "working"}
+          />
+        </>
+      )}
+      <HiddenInput inputRef={tool.fileInputRef} onFiles={tool.addFiles} />
+      <ProcessState phase={tool.phase} message={tool.message} />
+    </div>
   );
 }
+
+/* ===== Convert Panel ===== */
 
 function ConvertPanel() {
   const tool = useBatchTool();
@@ -481,64 +543,56 @@ function ConvertPanel() {
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-4 pt-6">
-        <BatchToolbar>
-          <div className="space-y-1.5">
-            <Label>Format tujuan</Label>
-            <div className="flex gap-2">
-              {(["jpg", "png", "webp"] as const).map((f) => (
-                <Button
-                  key={f}
-                  size="sm"
-                  variant={format === f ? "default" : "outline"}
-                  onClick={() => setFormat(f)}
-                >
-                  {f.toUpperCase()}
-                </Button>
-              ))}
-            </div>
-          </div>
-          <Button disabled={!tool.items.length || tool.phase === "working"} onClick={processAll}>
-            Konversi Semua
-          </Button>
-          {tool.items.length ? (
-            <Button variant="outline" onClick={tool.clearAll}>Hapus Semua</Button>
-          ) : null}
-        </BatchToolbar>
+    <div className="task-card-mockup">
+      <TaskHead
+        icon={RefreshCw}
+        title="Konversi Format"
+        desc="Ubah format foto ke JPG, PNG, atau WEBP."
+      />
 
-        {!tool.items.length ? (
-          <FileDropzone
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            onFiles={tool.addFiles}
-            hint="Tarik & lepas file di sini — bisa banyak foto sekaligus"
-          />
-        ) : (
-          <>
-            <BatchGrid items={tool.items} onRemove={tool.removeItem} onDownload={downloadItem} />
-            <BatchBottomBar
-              onAdd={() => tool.fileInputRef.current?.click()}
-              onClear={tool.clearAll}
-              onProcess={processAll}
-              processLabel="Unduh Semua"
-              disabled={tool.phase === "working"}
-            />
-          </>
-        )}
-        <input
-          ref={tool.fileInputRef}
-          type="file"
-          accept="image/*"
+      <div className="compress-toolbar">
+        <div className="space-y-1.5">
+          <Label>Format tujuan</Label>
+          <div className="choice-pills">
+            {(["jpg", "png", "webp"] as const).map((f) => (
+              <button
+                key={f}
+                className={`choice-pill ${format === f ? "active" : ""}`}
+                onClick={() => setFormat(f)}
+              >
+                {f.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {!tool.items.length ? (
+        <FileDropzone
+          accept="image/jpeg,image/png,image/webp"
           multiple
-          className="hidden"
-          onChange={(e) => { if (e.target.files) tool.addFiles(Array.from(e.target.files)); e.target.value = ""; }}
+          onFiles={tool.addFiles}
+          hint="Tarik & lepas file di sini — bisa banyak foto sekaligus"
         />
-        <ProcessState phase={tool.phase} message={tool.message} />
-      </CardContent>
-    </Card>
+      ) : (
+        <>
+          <BatchGrid items={tool.items} onRemove={tool.removeItem} onDownload={downloadItem} />
+          <BatchBottomBar
+            onAdd={() => tool.fileInputRef.current?.click()}
+            onClear={tool.clearAll}
+            onProcess={processAll}
+            processLabel="Unduh Semua"
+            disabled={tool.phase === "working"}
+          />
+        </>
+      )}
+      <HiddenInput inputRef={tool.fileInputRef} onFiles={tool.addFiles} />
+      <ProcessState phase={tool.phase} message={tool.message} />
+    </div>
   );
 }
+
+/* ===== Rotate Panel ===== */
 
 function RotatePanel() {
   const [items, setItems] = useState<{ id: string; file: File; url: string; angle: number }[]>([]);
@@ -610,139 +664,92 @@ function RotatePanel() {
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-4 pt-6">
-        <div className="flex items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-            <RotateCw className="size-4 text-muted-foreground" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Putar Foto</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Unggah beberapa foto, lalu putar satu per satu — pratinjau langsung berubah setiap kali tombol ditekan.
-            </p>
-          </div>
-        </div>
+    <div className="task-card-mockup">
+      <TaskHead
+        icon={RotateCw}
+        title="Putar Foto"
+        desc="Unggah beberapa foto, lalu putar satu per satu — pratinjau langsung berubah."
+      />
 
-        {!items.length ? (
-          <FileDropzone
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            onFiles={addFiles}
-            hint="Tarik & lepas file di sini — bisa banyak foto sekaligus"
-          />
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {items.map((item) => (
-                <div key={item.id} className="relative flex flex-col gap-2.5 rounded-xl border bg-card p-3">
-                  <button
-                    className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded-md border bg-background text-muted-foreground hover:text-foreground"
-                    onClick={() => removeItem(item.id)}
-                    aria-label="Hapus foto"
-                  >
-                    <X className="size-3" />
-                  </button>
-                  <p className="truncate pr-6 text-xs font-semibold text-foreground">{item.file.name}</p>
-                  <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg border bg-background">
-                    <img
-                      src={item.url}
-                      alt={item.file.name}
-                      className="max-h-[78%] max-w-[78%] object-contain transition-transform duration-200"
-                      style={{ transform: `rotate(${item.angle}deg)` }}
-                    />
-                  </div>
-                  <p className="text-center text-xs font-medium text-muted-foreground">
-                    {((item.angle % 360) + 360) % 360}°
-                  </p>
-                  <div className="flex gap-1.5">
-                    <Button variant="outline" size="icon" className="flex-1" aria-label="Putar kiri" onClick={() => rotateItem(item.id, -90)}>
-                      <RotateCcw className="size-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-none px-2 text-xs" onClick={() => resetItem(item.id)}>
-                      Reset
-                    </Button>
-                    <Button variant="outline" size="icon" className="flex-1" aria-label="Putar kanan" onClick={() => rotateItem(item.id, 90)}>
-                      <RotateCw className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center gap-3 border-t border-dashed border-border pt-4">
-              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                <ImagePlus className="size-4" /> Pilih Gambar
-              </Button>
-              <Button variant="outline" size="icon" aria-label="Hapus semua" onClick={clearAll}>
-                <Trash2 className="size-4" />
-              </Button>
-              <Button className="flex-1" disabled={phase === "working"} onClick={applyAll}>
-                <Download className="size-4" /> Terapkan & Unduh Semua
-              </Button>
-            </div>
-          </>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
+      {!items.length ? (
+        <FileDropzone
+          accept="image/jpeg,image/png,image/webp"
           multiple
-          className="hidden"
-          onChange={(e) => { if (e.target.files) addFiles(Array.from(e.target.files)); e.target.value = ""; }}
+          onFiles={addFiles}
+          hint="Tarik & lepas file di sini — bisa banyak foto sekaligus"
         />
-        <ProcessState phase={phase} message={message} />
-      </CardContent>
-    </Card>
+      ) : (
+        <>
+          <div className="rotate-grid">
+            {items.map((item) => (
+              <div key={item.id} className="rotate-card-mockup">
+                <button className="cc-remove" onClick={() => removeItem(item.id)} aria-label="Hapus foto">
+                  <X />
+                </button>
+                <p className="cc-name">{item.file.name}</p>
+                <div className="rotate-viewport">
+                  <img
+                    src={item.url}
+                    alt={item.file.name}
+                    style={{ transform: `rotate(${item.angle}deg)` }}
+                  />
+                </div>
+                <p className="rotate-angle">{((item.angle % 360) + 360) % 360}°</p>
+                <div className="rotate-actions">
+                  <button aria-label="Putar kiri" onClick={() => rotateItem(item.id, -90)}>
+                    <RotateCcw />
+                  </button>
+                  <button className="reset-btn" onClick={() => resetItem(item.id)}>
+                    Reset
+                  </button>
+                  <button aria-label="Putar kanan" onClick={() => rotateItem(item.id, 90)}>
+                    <RotateCw />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="compress-bottombar">
+            <button className="btn-secondary-line" onClick={() => fileInputRef.current?.click()} style={{ flex: "0 0 auto", padding: "11px 16px" }}>
+              <ImagePlus className="size-4" /> Pilih Gambar
+            </button>
+            <button className="icon-btn" onClick={clearAll} aria-label="Hapus semua" style={{ flex: "0 0 auto" }}>
+              <Trash2 className="size-4" />
+            </button>
+            <button className="btn-action-mockup" disabled={phase === "working"} onClick={applyAll} style={{ flex: 1 }}>
+              <Download className="size-4" /> Terapkan & Unduh Semua
+            </button>
+          </div>
+        </>
+      )}
+      <HiddenInput inputRef={fileInputRef} onFiles={addFiles} />
+      <ProcessState phase={phase} message={message} />
+    </div>
   );
 }
 
+/* ===== Main page ===== */
+
 function PhotoToolsPage() {
+  const [tab, setTab] = useState("resize");
+
   return (
     <div>
       <PageHeader
         title="Photo Tools"
         description="Ubah ukuran, kompres, konversi format, dan putar foto secara instan."
+        icon={Images}
       />
 
-      <Tabs defaultValue="resize" className="mt-6">
-        <TabsList>
-          <TabsTrigger value="resize">Resize</TabsTrigger>
-          <TabsTrigger value="compress">Kompres</TabsTrigger>
-          <TabsTrigger value="convert">Konversi</TabsTrigger>
-          <TabsTrigger value="rotate">Rotasi</TabsTrigger>
-          <TabsTrigger value="label">Cetak Label/Resi</TabsTrigger>
-          <TabsTrigger value="kolase">Kolase</TabsTrigger>
-          <TabsTrigger value="polaroid">Polaroid</TabsTrigger>
-        </TabsList>
+      <SegmentedTabs value={tab} onChange={setTab} />
 
-        <TabsContent value="resize" className="mt-4">
-          <ResizePanel />
-        </TabsContent>
-
-        <TabsContent value="compress" className="mt-4">
-          <CompressPanel />
-        </TabsContent>
-
-        <TabsContent value="convert" className="mt-4">
-          <ConvertPanel />
-        </TabsContent>
-
-        <TabsContent value="rotate" className="mt-4">
-          <RotatePanel />
-        </TabsContent>
-
-        <TabsContent value="label" className="mt-4">
-          <LabelPrintCard />
-        </TabsContent>
-
-        <TabsContent value="kolase" className="mt-4">
-          <CollageCard />
-        </TabsContent>
-
-        <TabsContent value="polaroid" className="mt-4">
-          <PolaroidCard />
-        </TabsContent>
-      </Tabs>
+      {tab === "resize" && <ResizePanel />}
+      {tab === "compress" && <CompressPanel />}
+      {tab === "convert" && <ConvertPanel />}
+      {tab === "rotate" && <RotatePanel />}
+      {tab === "label" && <LabelPrintCard />}
+      {tab === "kolase" && <CollageCard />}
+      {tab === "polaroid" && <PolaroidCard />}
     </div>
   );
 }
