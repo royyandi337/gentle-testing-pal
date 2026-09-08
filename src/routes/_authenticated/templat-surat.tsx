@@ -46,7 +46,12 @@ export const Route = createFileRoute("/_authenticated/templat-surat")({
   component: TemplatSuratPage,
 });
 
-type TemplateField = { key: string; label: string; placeholder: string };
+type TemplateField = {
+  key: string;
+  label: string;
+  placeholder: string;
+  index?: number;
+};
 type Template = {
   id: string;
   name: string;
@@ -324,69 +329,69 @@ function detectBlankFields(text: string): {
 } {
   const fields: TemplateField[] = [];
   let counter = 0;
-  let body = text;
 
-  // Convert plain text to simple HTML paragraphs first
-  body = body
+  const addField = (placeholder: string, index: number, label?: string) => {
+    counter += 1;
+    const key = `field_${counter}`;
+    fields.push({ key, label: label || `Kolom ${counter}`, placeholder, index });
+    return `{{${key}}}`;
+  };
+
+  // Scan the complete extracted text before converting it to HTML. The global
+  // expression keeps every dot-leader and underline as a separate field.
+  let body = text.replace(/\.{3,}|_{3,}/g, (match: string, index: number) =>
+    addField("isi di sini", index),
+  );
+
+  body = body.replace(/\[([^\]]{1,60})\]/g, (match: string, inner: string, index: number) => {
+    const trimmed = inner.trim();
+    if (/^_+$|^\.+$/.test(trimmed)) {
+      return addField("isi di sini", index);
+    }
+    const label = trimmed.length > 40 ? `Kolom ${counter + 1}` : trimmed;
+    return addField(trimmed, index, label);
+  });
+
+  body = body.replace(
+    /\((nama[^)]*|isi[^)]*|tempat[^)]*|tanggal[^)]*|alamat[^)]*|tanda tangan[^)]*)\)/gi,
+    (match: string, inner: string, index: number) => {
+      const trimmed = inner.trim();
+      const label = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+      return addField(trimmed, index, label);
+    },
+  );
+
+  const html = body
     .split(/\n\s*\n/)
     .map((para) => `<p>${para.replace(/\n/g, "<br>")}</p>`)
     .join("");
 
-  // Pattern 1: underscores (min 3)
-  body = body.replace(/_{3,}/g, () => {
-    counter++;
-    const key = `field_${counter}`;
-    fields.push({ key, label: `Kolom ${counter}`, placeholder: "isi di sini" });
-    return `{{${key}}}`;
-  });
+  return { fields, body: html };
+}
 
-  // Pattern 2: dot-leaders (min 3 dots, not sentence-ending)
-  body = body.replace(/\.{3,}/g, () => {
-    counter++;
-    const key = `field_${counter}`;
-    fields.push({ key, label: `Kolom ${counter}`, placeholder: "isi di sini" });
-    return `{{${key}}}`;
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>\"']/g, (character) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '\"': "&quot;",
+      "'": "&#039;",
+    };
+    return entities[character] ?? character;
   });
-
-  // Pattern 3: square-bracket placeholders [isi nama], [____], etc.
-  body = body.replace(/\[([^\]]{1,60})\]/g, (_match, inner: string) => {
-    const trimmed = inner.trim();
-    // Skip if it looks like a formatting instruction, not a blank
-    if (/^_+$|^\.+$/.test(trimmed)) {
-      counter++;
-      const key = `field_${counter}`;
-      fields.push({ key, label: `Kolom ${counter}`, placeholder: "isi di sini" });
-      return `{{${key}}}`;
-    }
-    counter++;
-    const key = `field_${counter}`;
-    const label = trimmed.length > 40 ? `Kolom ${counter}` : trimmed;
-    fields.push({ key, label, placeholder: trimmed });
-    return `{{${key}}}`;
-  });
-
-  // Pattern 4: parenthesised placeholders (nama), (isi ... )
-  body = body.replace(/\((nama[^)]*|isi[^)]*|tempat[^)]*|tanggal[^)]*|alamat[^)]*|tanda tangan[^)]*)\)/gi, (_match, inner: string) => {
-    counter++;
-    const key = `field_${counter}`;
-    const trimmed = inner.trim();
-    fields.push({ key, label: trimmed.charAt(0).toUpperCase() + trimmed.slice(1), placeholder: trimmed });
-    return `{{${key}}}`;
-  });
-
-  return { fields, body };
 }
 
 function renderPreview(body: string, fields: TemplateField[], formData: Record<string, string>): string {
-  let html = body;
-  for (const f of fields) {
-    const val = (formData[f.key] || "").trim();
-    const display = val || f.placeholder;
-    const cls = val ? "tpl-blank filled" : "tpl-blank";
-    const span = `<span class="${cls}">${display}</span>`;
-    html = html.split(`{{${f.key}}}`).join(span);
-  }
-  return html;
+  const fieldByKey = new Map(fields.map((field) => [field.key, field]));
+  return body.replace(/\{\{([^}]+)\}\}/g, (token: string, key: string) => {
+    const field = fieldByKey.get(key);
+    if (!field) return token;
+    const value = (formData[key] || "").trim();
+    const display = value || field.placeholder;
+    const cls = value ? "tpl-blank filled" : "tpl-blank";
+    return `<span class="${cls}" data-field="${field.key}">${escapeHtml(display)}</span>`;
+  });
 }
 
 const WIZARD_STEPS = [
@@ -448,6 +453,14 @@ function TemplatSuratPage() {
 
   function updateField(key: string, value: string) {
     setFormData((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function updateFieldLabel(key: string, label: string) {
+    setCurrent((prev) =>
+      prev
+        ? { ...prev, fields: prev.fields.map((field) => field.key === key ? { ...field, label } : field) }
+        : prev,
+    );
   }
 
   const filledCount = current ? current.fields.filter((f) => (formData[f.key] || "").trim()).length : 0;
@@ -541,8 +554,8 @@ function TemplatSuratPage() {
         desc: `Diunggah dari ${file.name}. ${fields.length} kolom isian terdeteksi otomatis.`,
         category: "custom",
         icon: <FileUp className="size-5" />,
-        fields: fields.length > 0 ? fields : [{ key: "field_1", label: "Kolom 1", placeholder: "isi di sini" }],
-        body: fields.length > 0 ? body : `<p>${text.replace(/\n\s*\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`,
+        fields,
+        body: body || `<p>${text.replace(/\n\s*\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`,
         custom: true,
       };
 
@@ -706,20 +719,36 @@ function TemplatSuratPage() {
                 <Pencil className="size-4 text-primary" />
                 <h3 className="text-sm font-bold text-foreground">Isi Data Surat</h3>
               </div>
-              {current.fields.map((f) => {
+              {current.fields.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+                  Tidak ada bagian kosong yang terdeteksi pada dokumen ini.
+                </div>
+              ) : current.fields.map((f) => {
                 const filled = !!(formData[f.key] || "").trim();
                 return (
-                  <div key={f.key} className="space-y-1.5">
-                    <Label className={cn("flex items-center gap-1.5 text-xs", filled && "text-success")}>
-                      {filled && <Check className="size-3" />}
-                      {f.label}
-                    </Label>
-                    <Input
-                      placeholder={f.placeholder}
-                      value={formData[f.key] || ""}
-                      onChange={(e) => updateField(f.key, e.target.value)}
-                      className={cn(filled && "border-success/40 bg-success/5")}
-                    />
+                  <div key={f.key} className="space-y-2 rounded-lg border border-border/70 p-3">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label htmlFor={`${f.key}-label`} className="text-[11px] text-muted-foreground">Nama kolom</Label>
+                        <Input
+                          id={`${f.key}-label`}
+                          value={f.label}
+                          onChange={(e) => updateFieldLabel(f.key, e.target.value)}
+                          placeholder={`Kolom ${f.index !== undefined ? f.index + 1 : ""}`}
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor={`${f.key}-value`} className={cn("text-[11px] text-muted-foreground", filled && "text-success")}>Isi</Label>
+                        <Input
+                          id={`${f.key}-value`}
+                          placeholder={f.placeholder}
+                          value={formData[f.key] || ""}
+                          onChange={(e) => updateField(f.key, e.target.value)}
+                          className={cn("h-9", filled && "border-success/40 bg-success/5")}
+                        />
+                      </div>
+                    </div>
                   </div>
                 );
               })}
