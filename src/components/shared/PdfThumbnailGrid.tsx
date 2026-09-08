@@ -57,7 +57,8 @@ export function PdfThumbnailGrid({ files, mode, items, setItems, selectionMode =
             const next = { ...prev };
             for (const key of Object.keys(next)) {
               if (key.startsWith(`${fid}-p`)) {
-                URL.revokeObjectURL(next[key]);
+                const url = next[key];
+                if (url) URL.revokeObjectURL(url);
                 delete next[key];
               }
             }
@@ -202,6 +203,7 @@ export function PdfThumbnailGrid({ files, mode, items, setItems, selectionMode =
       if (fromIndex === -1 || toIndex === -1) return prev;
       const next = [...prev];
       const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return prev;
       next.splice(toIndex, 0, moved);
       return next;
     });

@@ -76,6 +76,54 @@ export const DEFAULT_ADJUSTMENTS: Adjustments = {
   blue: 100,
 };
 
+const MAX_PREVIEW_PIXELS = 8_000_000;
+
+function supportsCanvasFilter(): boolean {
+  try {
+    const c = document.createElement("canvas");
+    const ctx = c.getContext("2d");
+    return typeof ctx?.filter === "string";
+  } catch {
+    return false;
+  }
+}
+
+let _filterSupported: boolean | null = null;
+function canvasFilterSupported(): boolean {
+  if (_filterSupported === null) _filterSupported = supportsCanvasFilter();
+  return _filterSupported;
+}
+
+function applyBrightnessContrastSaturation(
+  data: ImageData,
+  brightness: number,
+  contrast: number,
+  saturation: number,
+) {
+  const d = data.data;
+  const b = brightness / 100;
+  const c = contrast / 100;
+  const s = saturation / 100;
+  for (let i = 0; i < d.length; i += 4) {
+    let r = d[i]!;
+    let g = d[i + 1]!;
+    let bl = d[i + 2]!;
+    r = (r - 128) * c + 128;
+    g = (g - 128) * c + 128;
+    bl = (bl - 128) * c + 128;
+    r *= b;
+    g *= b;
+    bl *= b;
+    const gray = 0.299 * r + 0.587 * g + 0.114 * bl;
+    r = gray + (r - gray) * s;
+    g = gray + (g - gray) * s;
+    bl = gray + (bl - gray) * s;
+    d[i] = Math.max(0, Math.min(255, r));
+    d[i + 1] = Math.max(0, Math.min(255, g));
+    d[i + 2] = Math.max(0, Math.min(255, bl));
+  }
+}
+
 /** Renders the source image into a target-sized canvas with adjustments + background. */
 export function renderPhoto(
   img: HTMLImageElement,
@@ -83,35 +131,79 @@ export function renderPhoto(
   targetH: number,
   adj: Adjustments,
   background: string | null,
+  maxPixels?: number,
 ): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext("2d")!;
-  ctx.clearRect(0, 0, targetW, targetH);
-  if (background) {
-    ctx.fillStyle = background;
-    ctx.fillRect(0, 0, targetW, targetH);
+  const limit = maxPixels ?? MAX_PREVIEW_PIXELS;
+  const totalPixels = targetW * targetH;
+  const needsPixelProcessing =
+    adj.sharpen > 0 ||
+    adj.red !== 100 ||
+    adj.green !== 100 ||
+    adj.blue !== 100 ||
+    (!canvasFilterSupported() &&
+      (adj.brightness !== 100 || adj.contrast !== 100 || adj.saturation !== 100));
+
+  let scale = 1;
+  if (totalPixels > limit && needsPixelProcessing) {
+    scale = Math.sqrt(limit / totalPixels);
   }
 
+  const renderW = Math.max(1, Math.round(targetW * scale));
+  const renderH = Math.max(1, Math.round(targetH * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = renderW;
+  canvas.height = renderH;
+  const ctx = canvas.getContext("2d")!;
+  ctx.clearRect(0, 0, renderW, renderH);
+  if (background) {
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, renderW, renderH);
+  }
+
+  const useFilter =
+    canvasFilterSupported() &&
+    (adj.brightness !== 100 || adj.contrast !== 100 || adj.saturation !== 100);
+
   ctx.save();
-  ctx.filter = `brightness(${adj.brightness}%) contrast(${adj.contrast}%) saturate(${adj.saturation}%)`;
-  ctx.translate(targetW / 2 + adj.offsetX, targetH / 2 + adj.offsetY);
+  if (useFilter) {
+    ctx.filter = `brightness(${adj.brightness}%) contrast(${adj.contrast}%) saturate(${adj.saturation}%)`;
+  }
+  ctx.translate(renderW / 2 + adj.offsetX * scale, renderH / 2 + adj.offsetY * scale);
   ctx.rotate((adj.rotate * Math.PI) / 180);
   ctx.scale(adj.flipH ? -1 : 1, adj.flipV ? -1 : 1);
 
-  const cover = Math.max(targetW / img.width, targetH / img.height) * adj.zoom;
+  const cover = Math.max(renderW / img.width, renderH / img.height) * adj.zoom;
   const w = img.width * cover;
   const h = img.height * cover;
   ctx.drawImage(img, -w / 2, -h / 2, w, h);
   ctx.restore();
 
-  if (adj.red !== 100 || adj.green !== 100 || adj.blue !== 100 || adj.sharpen > 0) {
-    const data = ctx.getImageData(0, 0, targetW, targetH);
+  if (needsPixelProcessing) {
+    const data = ctx.getImageData(0, 0, renderW, renderH);
+    if (!canvasFilterSupported()) {
+      applyBrightnessContrastSaturation(data, adj.brightness, adj.contrast, adj.saturation);
+    }
     applyChannels(data, adj.red / 100, adj.green / 100, adj.blue / 100);
-    if (adj.sharpen > 0) sharpenImageData(data, targetW, targetH, adj.sharpen / 100);
+    if (adj.sharpen > 0) sharpenImageData(data, renderW, renderH, adj.sharpen / 100);
     ctx.putImageData(data, 0, 0);
   }
+
+  if (scale < 1) {
+    const fullCanvas = document.createElement("canvas");
+    fullCanvas.width = targetW;
+    fullCanvas.height = targetH;
+    const fullCtx = fullCanvas.getContext("2d")!;
+    fullCtx.imageSmoothingEnabled = true;
+    fullCtx.imageSmoothingQuality = "high";
+    if (background) {
+      fullCtx.fillStyle = background;
+      fullCtx.fillRect(0, 0, targetW, targetH);
+    }
+    fullCtx.drawImage(canvas, 0, 0, targetW, targetH);
+    return fullCanvas;
+  }
+
   return canvas;
 }
 

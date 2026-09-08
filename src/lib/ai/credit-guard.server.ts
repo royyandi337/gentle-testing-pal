@@ -55,7 +55,7 @@ export async function checkCredit(
   const remainingCredits = remaining as number;
   // -1 means unlimited (premium tier) — must never be treated as "insufficient".
   if (remainingCredits !== -1 && remainingCredits <= 0) {
-    return { ok: false, error: "Insufficient credits" };
+    return { ok: false, error: "Credit tidak mencukupi. Silakan upgrade ke Premium." };
   }
   return { ok: true };
 }

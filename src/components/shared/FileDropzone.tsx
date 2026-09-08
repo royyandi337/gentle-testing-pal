@@ -65,7 +65,10 @@ export function FileDropzone({
         )}
       >
         <UploadCloud className="size-7 text-primary" />
-        <p className="text-sm font-medium">Tarik &amp; lepas file di sini, atau klik untuk pilih</p>
+        <p className="text-sm font-medium">
+          <span className="hidden sm:inline">Tarik &amp; lepas file di sini, atau klik untuk pilih</span>
+          <span className="sm:hidden">Ketuk untuk memilih foto dari galeri atau kamera</span>
+        </p>
         <p className="text-xs text-muted-foreground">{hint ?? accept}</p>
         <input
           ref={inputRef}

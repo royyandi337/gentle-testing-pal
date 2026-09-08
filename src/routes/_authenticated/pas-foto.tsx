@@ -48,8 +48,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useCredits } from "@/hooks/useCredits";
-import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 import {
   PHOTO_SIZES,
   PAPER_SIZES,
@@ -100,8 +99,7 @@ const TEMPLATES = [
   { id: "softblue", label: "Biru Muda", bgId: "custom", swatch: "#7fb3e8" },
 ];
 
-const CHECKER =
-  "bg-[repeating-conic-gradient(var(--color-muted)_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]";
+const CHECKER = "pas-foto-checker";
 
 const STEPS = [
   { id: 1, label: "Upload" },
@@ -157,8 +155,8 @@ function PasFotoPage() {
   const [aiBusy, setAiBusy] = useState(false);
 
   const [sizeId, setSizeId] = useState("3x4");
-  const [customW, setCustomW] = useState(3);
-  const [customH, setCustomH] = useState(4);
+  const [customW, setCustomW] = useState("3");
+  const [customH, setCustomH] = useState("4");
   const [dpi, setDpi] = useState(300);
   const [adj, setAdj] = useState<Adjustments>(DEFAULT_ADJUSTMENTS);
   const [bgId, setBgId] = useState("white");
@@ -167,6 +165,9 @@ function PasFotoPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [statusMsg, setStatusMsg] = useState<string>();
   const [showAllTemplates, setShowAllTemplates] = useState(false);
+  const [visitedSteps, setVisitedSteps] = useState<Set<number>>(() => new Set([1]));
+  const [exporting, setExporting] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
 
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -176,11 +177,21 @@ function PasFotoPage() {
   const [spacing, setSpacing] = useState(0.2);
   const [count, setCount] = useState(8);
   const sheetPreviewRef = useRef<HTMLDivElement>(null);
-  const [sheetInfo, setSheetInfo] = useState<{ cols: number; rows: number; placed: number }>();
+  const [sheetInfo, setSheetInfo] = useState<{
+    cols: number;
+    rows: number;
+    placed: number;
+    capacity: number;
+  }>();
 
   const size = useMemo(() => {
     if (sizeId === "custom") {
-      return { id: "custom", label: "Custom", wCm: customW, hCm: customH };
+      return {
+        id: "custom",
+        label: "Custom",
+        wCm: Math.max(1, Number(customW) || 1),
+        hCm: Math.max(1, Number(customH) || 1),
+      };
     }
     return PHOTO_SIZES.find((s) => s.id === sizeId) ?? PHOTO_SIZES[1]!;
   }, [sizeId, customW, customH]);
@@ -196,15 +207,21 @@ function PasFotoPage() {
   useEffect(() => {
     if (!file) {
       setImg(null);
+      setImageLoading(false);
       return;
     }
     let cancelled = false;
+    setImageLoading(true);
     (async () => {
       try {
         const dataUrl = await fileToDataUrl(file);
         const loaded = await loadImage(dataUrl);
-        if (!cancelled) setImg(loaded);
+        if (!cancelled) {
+          setImg(loaded);
+          setImageLoading(false);
+        }
       } catch {
+        setImageLoading(false);
         toast.error("Gambar tidak dapat dibaca. Silakan coba file lain.");
       }
     })();
@@ -254,13 +271,28 @@ function PasFotoPage() {
     result.canvas.style.maxWidth = "100%";
     result.canvas.className = "rounded-xl border shadow-sm bg-white";
     host.appendChild(result.canvas);
-    setSheetInfo({ cols: result.cols, rows: result.rows, placed: result.placed });
+    setSheetInfo({
+      cols: result.cols,
+      rows: result.rows,
+      placed: result.placed,
+      capacity: result.capacity,
+    });
     return result.canvas;
   }, [buildPhotoCanvas, paperId, size.wCm, size.hCm, margin, spacing, dpi, count]);
 
   useEffect(() => {
-    if (step === 5) renderSheet();
+    if (step === 5 || step === 6) renderSheet();
   }, [step, renderSheet]);
+
+  useEffect(() => {
+    if (!file) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [file]);
 
   function handleUpload(picked: File | null) {
     if (!picked) return;
@@ -280,6 +312,7 @@ function PasFotoPage() {
     setBgId("white");
     setPhase("idle");
     setStatusMsg(undefined);
+    setVisitedSteps(new Set([1, 2]));
     setStep(2);
   }
 
@@ -291,6 +324,7 @@ function PasFotoPage() {
     setEnhanceStatus("pending");
     setPhase("idle");
     setStatusMsg(undefined);
+    setVisitedSteps(new Set([1]));
     setStep(1);
   }
 
@@ -308,6 +342,7 @@ function PasFotoPage() {
       setPhase("done");
       setStatusMsg("Background berhasil dihapus.");
       toast.success("Background berhasil dihapus");
+      setVisitedSteps((steps) => new Set([...steps, 3]));
       setStep(3);
     } catch (error) {
       setPhase("error");
@@ -334,6 +369,7 @@ function PasFotoPage() {
       setPhase("done");
       setStatusMsg("Foto berhasil ditingkatkan.");
       toast.success("Foto berhasil ditingkatkan");
+      setVisitedSteps((steps) => new Set([...steps, 5]));
       setStep(5);
     } catch (error) {
       setPhase("error");
@@ -346,18 +382,22 @@ function PasFotoPage() {
   }
 
   async function exportPhoto(type: "image/jpeg" | "image/png") {
+    if (exporting) return;
     const canvas = buildPhotoCanvas();
     if (!canvas) {
       toast.error("Unggah foto terlebih dahulu.");
       return;
     }
+    setExporting(true);
     setPhase("working");
     setStatusMsg("Menyiapkan file...");
+    let downloaded = false;
     try {
       const blob = await canvasToBlob(canvas, type, quality / 100);
       const ext = type === "image/png" ? "png" : "jpg";
       const name = `pas-foto-${size.label.replace(/\s+/g, "")}-${dpi}dpi.${ext}`;
       downloadBlob(blob, name);
+      downloaded = true;
       setStatusMsg("Menyimpan ke Riwayat...");
       await saveResult({
         category: "pas-foto",
@@ -370,18 +410,27 @@ function PasFotoPage() {
       setStatusMsg("File diunduh dan disimpan di Riwayat.");
     } catch {
       setPhase("error");
-      setStatusMsg("Proses gagal. Silakan coba lagi.");
+      const message = downloaded
+        ? "File berhasil diunduh, tetapi gagal disimpan ke Riwayat."
+        : "Proses gagal. Silakan coba lagi.";
+      setStatusMsg(message);
+      toast.error(message);
+    } finally {
+      setExporting(false);
     }
   }
 
   async function exportSheet(kind: "image/jpeg" | "image/png" | "pdf") {
+    if (exporting) return;
     const canvas = renderSheet();
     if (!canvas) {
       toast.error("Unggah foto terlebih dahulu.");
       return;
     }
+    setExporting(true);
     setPhase("working");
     setStatusMsg("Membuat lembar cetak...");
+    let downloaded = false;
     try {
       if (kind === "pdf") {
         const { default: JsPDF } = await import("jspdf");
@@ -401,6 +450,7 @@ function PasFotoPage() {
         );
         const blob = pdf.output("blob");
         downloadBlob(blob, "lembar-pas-foto.pdf");
+        downloaded = true;
         await saveResult({
           category: "pas-foto",
           tool: "Lembar Cetak Pas Foto",
@@ -411,6 +461,7 @@ function PasFotoPage() {
         const blob = await canvasToBlob(canvas, kind, 0.95);
         const ext = kind === "image/png" ? "png" : "jpg";
         downloadBlob(blob, `lembar-pas-foto.${ext}`);
+        downloaded = true;
         await saveResult({
           category: "pas-foto",
           tool: "Lembar Cetak Pas Foto",
@@ -422,7 +473,13 @@ function PasFotoPage() {
       setStatusMsg("Lembar cetak berhasil dibuat dan disimpan di Riwayat.");
     } catch {
       setPhase("error");
-      setStatusMsg("Proses gagal. Silakan coba lagi.");
+      const message = downloaded
+        ? "File berhasil diunduh, tetapi gagal disimpan ke Riwayat."
+        : "Proses gagal. Silakan coba lagi.";
+      setStatusMsg(message);
+      toast.error(message);
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -444,14 +501,14 @@ function PasFotoPage() {
     if (next > 1 && !file) return;
     setPhase("idle");
     setStatusMsg(undefined);
+    setVisitedSteps((steps) => new Set([...steps, next]));
     setStep(next);
   }
 
   const visibleTemplates = showAllTemplates ? TEMPLATES : TEMPLATES.slice(0, 5);
 
   return (
-    <TooltipProvider delayDuration={200}>
-      <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl min-w-0">
         <header className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
           <div className="min-w-0">
             <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">Pas Foto</h1>
@@ -473,7 +530,12 @@ function PasFotoPage() {
           ) : null}
         </header>
 
-        <StepIndicator step={step} onSelect={goTo} enabled={Boolean(file)} />
+        <StepIndicator
+        step={step}
+        onSelect={goTo}
+        enabled={Boolean(file)}
+        visitedSteps={visitedSteps}
+      />
 
         <div className="mt-5">
           {step === 1 ? (
@@ -550,7 +612,8 @@ function PasFotoPage() {
                       <div className="flex min-w-0 items-center gap-1 rounded-lg border p-1">
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="icon-lg"
+                          className="h-10 w-10 sm:h-9 sm:w-9"
                           aria-label="Perkecil"
                           onClick={() => setZoom(adj.zoom - 0.1)}
                         >
@@ -561,7 +624,8 @@ function PasFotoPage() {
                         </span>
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="icon-lg"
+                          className="h-10 w-10 sm:h-9 sm:w-9"
                           aria-label="Perbesar"
                           onClick={() => setZoom(adj.zoom + 0.1)}
                         >
@@ -580,7 +644,7 @@ function PasFotoPage() {
 
                     <div
                       ref={previewRef}
-                      className={`flex min-h-[320px] items-center justify-center rounded-xl p-4 ${CHECKER}`}
+                      className={`flex min-h-[240px] items-center justify-center overflow-hidden rounded-xl p-3 sm:min-h-[320px] sm:p-4 ${CHECKER}`}
                     />
 
                     <StepNav
@@ -664,7 +728,8 @@ function PasFotoPage() {
                             step="0.1"
                             min="1"
                             value={customW}
-                            onChange={(e) => setCustomW(Number(e.target.value) || 1)}
+                            onFocus={(e) => e.currentTarget.scrollIntoView({ block: "center" })}
+                            onChange={(e) => setCustomW(e.target.value)}
                           />
                         </div>
                         <div className="space-y-1">
@@ -674,7 +739,8 @@ function PasFotoPage() {
                             step="0.1"
                             min="1"
                             value={customH}
-                            onChange={(e) => setCustomH(Number(e.target.value) || 1)}
+                            onFocus={(e) => e.currentTarget.scrollIntoView({ block: "center" })}
+                            onChange={(e) => setCustomH(e.target.value)}
                           />
                         </div>
                       </div>
@@ -760,7 +826,8 @@ function PasFotoPage() {
                     <div className="grid grid-cols-4 gap-2">
                       <Button
                         variant="outline"
-                        size="icon"
+                        size="icon-lg"
+                        className="h-11 w-11 sm:h-9 sm:w-9"
                         aria-label="Naik"
                         onClick={() => nudge(0, -10)}
                       >
@@ -768,7 +835,8 @@ function PasFotoPage() {
                       </Button>
                       <Button
                         variant="outline"
-                        size="icon"
+                        size="icon-lg"
+                        className="h-11 w-11 sm:h-9 sm:w-9"
                         aria-label="Turun"
                         onClick={() => nudge(0, 10)}
                       >
@@ -776,7 +844,8 @@ function PasFotoPage() {
                       </Button>
                       <Button
                         variant="outline"
-                        size="icon"
+                        size="icon-lg"
+                        className="h-11 w-11 sm:h-9 sm:w-9"
                         aria-label="Kiri"
                         onClick={() => nudge(-10, 0)}
                       >
@@ -784,7 +853,8 @@ function PasFotoPage() {
                       </Button>
                       <Button
                         variant="outline"
-                        size="icon"
+                        size="icon-lg"
+                        className="h-11 w-11 sm:h-9 sm:w-9"
                         aria-label="Kanan"
                         onClick={() => nudge(10, 0)}
                       >
@@ -969,12 +1039,12 @@ function PasFotoPage() {
                 <CardContent className="space-y-4">
                   <div
                     ref={sheetPreviewRef}
-                    className="flex min-h-[320px] items-center justify-center rounded-xl bg-muted/40 p-3"
+                    className="flex min-h-[240px] items-center justify-center overflow-hidden rounded-xl bg-muted/40 p-2 sm:min-h-[320px] sm:p-3"
                   />
                   {sheetInfo ? (
                     <p className="text-xs text-muted-foreground">
-                      Grid {sheetInfo.cols} × {sheetInfo.rows} — {sheetInfo.placed} pcs foto
-                      tersusun.
+                      Grid {sheetInfo.cols} × {sheetInfo.rows} — {sheetInfo.placed} pcs foto tersusun.
+                      {sheetInfo.placed < count ? ` Maksimal ${sheetInfo.capacity} foto muat pada kertas ini.` : ""}
                     </p>
                   ) : null}
                   <StepNav
@@ -1051,7 +1121,7 @@ function PasFotoPage() {
                 <CardContent className="space-y-4">
                   <div
                     ref={previewRef}
-                    className={`flex min-h-[260px] items-center justify-center rounded-xl p-4 ${CHECKER}`}
+                    className={`flex min-h-[220px] items-center justify-center overflow-hidden rounded-xl p-3 sm:min-h-[260px] sm:p-4 ${CHECKER}`}
                   />
                   <SliderRow
                     label="Kualitas JPG"
@@ -1062,11 +1132,11 @@ function PasFotoPage() {
                     suffix="%"
                     onChange={setQuality}
                   />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button onClick={() => exportPhoto("image/jpeg")}>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Button disabled={exporting} onClick={() => exportPhoto("image/jpeg")}>
                       <Download className="size-4" /> Unduh JPG
                     </Button>
-                    <Button variant="outline" onClick={() => exportPhoto("image/png")}>
+                    <Button variant="outline" disabled={exporting} onClick={() => exportPhoto("image/png")}>
                       <Download className="size-4" /> Unduh PNG
                     </Button>
                   </div>
@@ -1085,14 +1155,14 @@ function PasFotoPage() {
                     ref={sheetPreviewRef}
                     className="flex min-h-[260px] items-center justify-center rounded-xl bg-muted/40 p-3"
                   />
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button onClick={() => exportSheet("pdf")}>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <Button disabled={exporting} onClick={() => exportSheet("pdf")}>
                       <Save className="size-4" /> PDF
                     </Button>
-                    <Button variant="outline" onClick={() => exportSheet("image/jpeg")}>
+                    <Button variant="outline" disabled={exporting} onClick={() => exportSheet("image/jpeg")}>
                       <Download className="size-4" /> JPG
                     </Button>
-                    <Button variant="outline" onClick={() => exportSheet("image/png")}>
+                    <Button variant="outline" disabled={exporting} onClick={() => exportSheet("image/png")}>
                       <Download className="size-4" /> PNG
                     </Button>
                   </div>
@@ -1109,7 +1179,6 @@ function PasFotoPage() {
           ) : null}
         </div>
       </div>
-    </TooltipProvider>
   );
 }
 
@@ -1117,15 +1186,17 @@ function StepIndicator({
   step,
   onSelect,
   enabled,
+  visitedSteps,
 }: {
   step: number;
   onSelect: (n: number) => void;
   enabled: boolean;
+  visitedSteps: Set<number>;
 }) {
   return (
-    <ol className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
+    <ol className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {STEPS.map((s, i) => {
-        const done = s.id < step;
+        const done = s.id < step && visitedSteps.has(s.id);
         const current = s.id === step;
         return (
           <li key={s.id} className="flex shrink-0 items-center gap-2">
@@ -1205,12 +1276,20 @@ function AiStepCard({
   file: File | null;
 }) {
   const [preview, setPreview] = useState<string>();
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!file) return;
     let cancelled = false;
+    setLoading(true);
+    setPreview(undefined);
     fileToDataUrl(file).then((url) => {
-      if (!cancelled) setPreview(url);
+      if (!cancelled) {
+        setPreview(url);
+        setLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) setLoading(false);
     });
     return () => {
       cancelled = true;
@@ -1233,7 +1312,8 @@ function AiStepCard({
         ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className={`flex min-h-[260px] items-center justify-center rounded-xl p-4 ${CHECKER}`}>
+        <div className={`flex min-h-[220px] items-center justify-center overflow-hidden rounded-xl p-3 sm:min-h-[260px] sm:p-4 ${CHECKER}`}>
+          {loading ? <p className="text-xs text-muted-foreground">Memuat gambar...</p> : null}
           {preview ? (
             <img
               src={preview}
@@ -1253,10 +1333,7 @@ function AiStepCard({
         </div>
 
         {busy ? (
-          <div className="space-y-1.5">
-            <Progress value={66} className="h-1.5" />
-            <p className="text-center text-xs text-muted-foreground">Sedang diproses AI... mohon tunggu</p>
-          </div>
+          <p className="text-center text-xs text-muted-foreground">Sedang diproses AI... mohon tunggu</p>
         ) : null}
 
         <ProcessState phase={phase} message={statusMsg} />
@@ -1286,16 +1363,12 @@ function LabelWithHint({
   asTitle?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
-      {asTitle ? <CardTitle className="text-base">{label}</CardTitle> : <Label>{label}</Label>}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button type="button" aria-label={`Info ${label}`} className="text-muted-foreground">
-            <Info className="size-3.5" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent className="max-w-56">{hint}</TooltipContent>
-      </Tooltip>
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
+        {asTitle ? <CardTitle className="text-base">{label}</CardTitle> : <Label>{label}</Label>}
+        <Info className="size-3.5 text-muted-foreground" aria-hidden="true" />
+      </div>
+      <p className="text-xs leading-relaxed text-muted-foreground">{hint}</p>
     </div>
   );
 }
