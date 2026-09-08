@@ -242,10 +242,7 @@ function PasFotoPage() {
     host.replaceChildren();
     const canvas = buildPhotoCanvas();
     if (!canvas) return;
-    canvas.style.maxHeight = "460px";
-    canvas.style.width = "auto";
-    canvas.style.maxWidth = "100%";
-    canvas.className = "rounded-xl border shadow-sm";
+    canvas.className = "pas-foto-preview-canvas rounded-xl border shadow-sm";
     host.appendChild(canvas);
   }, [buildPhotoCanvas, step]);
 
@@ -266,10 +263,7 @@ function PasFotoPage() {
       count,
     });
     host.replaceChildren();
-    result.canvas.style.maxHeight = "460px";
-    result.canvas.style.width = "auto";
-    result.canvas.style.maxWidth = "100%";
-    result.canvas.className = "rounded-xl border shadow-sm bg-white";
+    result.canvas.className = "pas-foto-preview-canvas rounded-xl border shadow-sm bg-white";
     host.appendChild(result.canvas);
     setSheetInfo({
       cols: result.cols,
@@ -598,106 +592,8 @@ function PasFotoPage() {
 
           {step === 3 ? (
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]">
-              {/* Preview column */}
-              <div className="space-y-4">
-                <Card className="border shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="text-base">3. Ukuran, Posisi &amp; Background</CardTitle>
-                    <CardDescription>
-                      Ganti warna background dan atur ukuran/crop sebelum langkah enhance.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:justify-between">
-                      <div className="flex min-w-0 items-center gap-1 rounded-lg border p-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-lg"
-                          className="h-10 w-10 sm:h-9 sm:w-9"
-                          aria-label="Perkecil"
-                          onClick={() => setZoom(adj.zoom - 0.1)}
-                        >
-                          <Minus className="size-4" />
-                        </Button>
-                        <span className="w-14 text-center text-sm font-medium tabular-nums">
-                          {Math.round(adj.zoom * 100)}%
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="icon-lg"
-                          className="h-10 w-10 sm:h-9 sm:w-9"
-                          aria-label="Perbesar"
-                          onClick={() => setZoom(adj.zoom + 0.1)}
-                        >
-                          <Plus className="size-4" />
-                        </Button>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="shrink-0"
-                        onClick={() => setAdj(DEFAULT_ADJUSTMENTS)}
-                      >
-                        <RotateCcw className="size-4" /> Reset
-                      </Button>
-                    </div>
-
-                    <div
-                      ref={previewRef}
-                      className={`flex min-h-[240px] items-center justify-center overflow-hidden rounded-xl p-3 sm:min-h-[320px] sm:p-4 ${CHECKER}`}
-                    />
-
-                    <StepNav
-                      onBack={() => goTo(2)}
-                      onNext={() => goTo(4)}
-                      nextLabel="Lanjut ke Enhance"
-                    />
-                    <ProcessState phase={phase} message={statusMsg} />
-                  </CardContent>
-                </Card>
-
-                {/* Template Cepat */}
-                <Card className="border shadow-sm">
-                  <CardHeader className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                    <CardTitle className="truncate text-base">Template Cepat</CardTitle>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="h-auto shrink-0 p-0"
-                      onClick={() => setShowAllTemplates((v) => !v)}
-                    >
-                      {showAllTemplates ? "Sembunyikan" : "Lihat Semua"}
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
-                      {visibleTemplates.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => applyTemplate(t)}
-                          className="group w-20 shrink-0 text-left"
-                        >
-                          <span
-                            className={`flex h-24 w-20 items-center justify-center rounded-lg border transition group-hover:ring-2 group-hover:ring-ring/40 ${t.swatch ? "" : CHECKER}`}
-                            style={t.swatch ? { backgroundColor: t.swatch } : undefined}
-                          >
-                            {t.swatch ? null : (
-                              <ImageIcon className="size-5 text-muted-foreground" />
-                            )}
-                          </span>
-                          <span className="mt-1 block truncate text-xs text-muted-foreground">
-                            {t.label}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Settings column */}
-              <div className="space-y-4">
+              {/* Settings column — shown first on mobile so controls are visible without scrolling past a large preview */}
+              <div className="order-1 space-y-4 lg:order-2">
                 <Card className="border shadow-sm">
                   <CardHeader>
                     <CardTitle className="text-base">Ukuran Pas Foto</CardTitle>
@@ -1024,6 +920,104 @@ function PasFotoPage() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Preview column — shown second on mobile so settings are visible first; on desktop it appears on the left */}
+              <div className="order-2 space-y-4 lg:order-1">
+                <Card className="border shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-base">3. Preview Pas Foto</CardTitle>
+                    <CardDescription>
+                      Hasil preview sesuai ukuran, posisi, dan background yang dipilih.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:justify-between">
+                      <div className="flex min-w-0 items-center gap-1 rounded-lg border p-1">
+                        <Button
+                          variant="ghost"
+                          size="icon-lg"
+                          className="h-10 w-10 sm:h-9 sm:w-9"
+                          aria-label="Perkecil"
+                          onClick={() => setZoom(adj.zoom - 0.1)}
+                        >
+                          <Minus className="size-4" />
+                        </Button>
+                        <span className="w-14 text-center text-sm font-medium tabular-nums">
+                          {Math.round(adj.zoom * 100)}%
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon-lg"
+                          className="h-10 w-10 sm:h-9 sm:w-9"
+                          aria-label="Perbesar"
+                          onClick={() => setZoom(adj.zoom + 0.1)}
+                        >
+                          <Plus className="size-4" />
+                        </Button>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => setAdj(DEFAULT_ADJUSTMENTS)}
+                      >
+                        <RotateCcw className="size-4" /> Reset
+                      </Button>
+                    </div>
+
+                    <div
+                      ref={previewRef}
+                      className={`flex min-h-[200px] items-center justify-center overflow-hidden rounded-xl p-3 sm:min-h-[320px] sm:p-4 ${CHECKER}`}
+                    />
+
+                    <StepNav
+                      onBack={() => goTo(2)}
+                      onNext={() => goTo(4)}
+                      nextLabel="Lanjut ke Enhance"
+                    />
+                    <ProcessState phase={phase} message={statusMsg} />
+                  </CardContent>
+                </Card>
+
+                {/* Template Cepat */}
+                <Card className="border shadow-sm">
+                  <CardHeader className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                    <CardTitle className="truncate text-base">Template Cepat</CardTitle>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="h-auto shrink-0 p-0"
+                      onClick={() => setShowAllTemplates((v) => !v)}
+                    >
+                      {showAllTemplates ? "Sembunyikan" : "Lihat Semua"}
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
+                      {visibleTemplates.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => applyTemplate(t)}
+                          className="group w-20 shrink-0 text-left"
+                        >
+                          <span
+                            className={`flex h-24 w-20 items-center justify-center rounded-lg border transition group-hover:ring-2 group-hover:ring-ring/40 ${t.swatch ? "" : CHECKER}`}
+                            style={t.swatch ? { backgroundColor: t.swatch } : undefined}
+                          >
+                            {t.swatch ? null : (
+                              <ImageIcon className="size-5 text-muted-foreground" />
+                            )}
+                          </span>
+                          <span className="mt-1 block truncate text-xs text-muted-foreground">
+                            {t.label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           ) : null}
 
@@ -1153,7 +1147,7 @@ function PasFotoPage() {
                 <CardContent className="space-y-4">
                   <div
                     ref={sheetPreviewRef}
-                    className="flex min-h-[260px] items-center justify-center rounded-xl bg-muted/40 p-3"
+                    className="flex min-h-[220px] items-center justify-center overflow-hidden rounded-xl bg-muted/40 p-2 sm:min-h-[260px] sm:p-3"
                   />
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <Button disabled={exporting} onClick={() => exportSheet("pdf")}>
@@ -1318,7 +1312,7 @@ function AiStepCard({
             <img
               src={preview}
               alt="Preview foto yang sedang diproses"
-              className="max-h-[360px] max-w-full rounded-xl border shadow-sm"
+              className="max-h-[240px] max-w-full rounded-xl border shadow-sm sm:max-h-[360px]"
             />
           ) : null}
         </div>

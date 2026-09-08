@@ -161,6 +161,17 @@
   background-size: 20px 20px;
 }
 
+.pas-foto-preview-canvas {
+  max-height: 300px;
+  width: auto;
+  max-width: 100%;
+}
+@media (min-width: 640px) {
+  .pas-foto-preview-canvas {
+    max-height: 460px;
+  }
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
