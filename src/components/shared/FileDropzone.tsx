@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent } from "react";
-import { UploadCloud } from "lucide-react";
+import { UploadCloud, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/image";
 
@@ -7,12 +7,14 @@ export function FileDropzone({
   accept,
   multiple = false,
   onFiles,
+  onRemoveFile,
   files,
   hint,
 }: {
   accept: string;
   multiple?: boolean;
   onFiles: (files: File[]) => void;
+  onRemoveFile?: (index: number) => void;
   files?: File[];
   hint?: string;
 }) {
@@ -23,7 +25,21 @@ export function FileDropzone({
     e.preventDefault();
     setOver(false);
     const dropped = Array.from(e.dataTransfer.files ?? []);
-    if (dropped.length) onFiles(multiple ? dropped : dropped.slice(0, 1));
+    if (dropped.length) {
+      if (multiple && files) {
+        onFiles([...files, ...dropped]);
+      } else {
+        onFiles(dropped.slice(0, multiple ? undefined : 1));
+      }
+    }
+  }
+
+  function removeFile(index: number) {
+    if (onRemoveFile) {
+      onRemoveFile(index);
+      return;
+    }
+    if (files) onFiles(files.filter((_, fileIndex) => fileIndex !== index));
   }
 
   return (
@@ -55,7 +71,13 @@ export function FileDropzone({
           className="hidden"
           onChange={(e) => {
             const picked = Array.from(e.target.files ?? []);
-            if (picked.length) onFiles(picked);
+            if (picked.length) {
+              if (multiple && files) {
+                onFiles([...files, ...picked]);
+              } else {
+                onFiles(picked);
+              }
+            }
             e.target.value = "";
           }}
         />
@@ -68,7 +90,20 @@ export function FileDropzone({
               className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2"
             >
               <span className="truncate">{f.name}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(f.size)}</span>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="text-xs text-muted-foreground">{formatBytes(f.size)}</span>
+                {multiple && (
+                  <button
+                    type="button"
+                    aria-label={`Hapus ${f.name}`}
+                    title="Hapus file"
+                    onClick={() => removeFile(i)}
+                    className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>

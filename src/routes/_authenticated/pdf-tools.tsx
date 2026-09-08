@@ -247,7 +247,18 @@ function PdfToolsPage() {
                 accept="application/pdf"
                 multiple
                 files={mergeFiles}
-                onFiles={setMergeFiles}
+                onFiles={(picked) => {
+                  setMergeFiles((previous) => {
+                    const existing = new Set(previous.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
+                    return [
+                      ...previous,
+                      ...picked.filter((file) => !existing.has(`${file.name}-${file.size}-${file.lastModified}`)),
+                    ];
+                  });
+                }}
+                onRemoveFile={(index) => {
+                  setMergeFiles((previous) => previous.filter((_, fileIndex) => fileIndex !== index));
+                }}
                 hint="Minimal dua berkas PDF"
               />
               {mergeFiles.length >= 2 && (

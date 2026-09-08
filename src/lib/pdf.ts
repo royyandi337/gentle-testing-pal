@@ -50,38 +50,87 @@ export async function assemblePdfPages(selections: PdfPageSelection[]) {
   return toBlob(await out.save());
 }
 
+async function yieldToBrowser(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => resolve());
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
+}
+
 export async function renderPdfThumbnails(
   file: File,
   onPage?: (pageIndex: number, blob: Blob, total: number) => void,
 ) {
-  const pdfjs = await import("pdfjs-dist");
-  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-  const data = new Uint8Array(await file.arrayBuffer());
-  const doc = await pdfjs.getDocument({ data }).promise;
-  const total = doc.numPages;
-  const blobs: Blob[] = [];
-  for (let i = 1; i <= total; i++) {
-    const page = await doc.getPage(i);
-    const baseViewport = page.getViewport({ scale: 1 });
-    const scale = Math.min(0.55, 180 / baseViewport.width);
-    const viewport = page.getViewport({ scale });
+  const createPlaceholder = async (pageIndex: number, total: number) => {
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.floor(viewport.width));
-    canvas.height = Math.max(1, Math.floor(viewport.height));
+    canvas.width = 180;
+    canvas.height = 254;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Browser tidak mendukung render thumbnail PDF.");
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvas, canvasContext: ctx, viewport }).promise;
-    const blob = await new Promise<Blob>((resolve, reject) =>
+    ctx.strokeStyle = "#d7dce5";
+    ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+    ctx.fillStyle = "#64748b";
+    ctx.font = "bold 14px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`Halaman ${pageIndex + 1}`, canvas.width / 2, canvas.height / 2 - 4);
+    ctx.font = "11px sans-serif";
+    ctx.fillText(`${total} halaman PDF`, canvas.width / 2, canvas.height / 2 + 17);
+    return new Promise<Blob>((resolve, reject) =>
       canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Gagal membuat thumbnail PDF.")), "image/jpeg", 0.82),
     );
-    blobs.push(blob);
-    onPage?.(i - 1, blob, total);
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  };
+
+  try {
+    const pdfjs = await import("pdfjs-dist");
+    const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+    const data = new Uint8Array(await file.arrayBuffer());
+    const doc = await pdfjs.getDocument({ data }).promise;
+    const total = doc.numPages;
+    const blobs: Blob[] = [];
+    for (let i = 1; i <= total; i++) {
+      let blob: Blob;
+      try {
+        const page = await doc.getPage(i);
+        const baseViewport = page.getViewport({ scale: 1 });
+        const scale = Math.min(0.55, 180 / baseViewport.width);
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.floor(viewport.width));
+        canvas.height = Math.max(1, Math.floor(viewport.height));
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas tidak tersedia.");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+        blob = await new Promise<Blob>((resolve, reject) =>
+          canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Gagal membuat thumbnail PDF.")), "image/jpeg", 0.82),
+        );
+      } catch {
+        blob = await createPlaceholder(i - 1, total);
+      }
+      blobs.push(blob);
+      onPage?.(i - 1, blob, total);
+      await yieldToBrowser();
+    }
+    return blobs;
+  } catch {
+    const source = await readPdf(file);
+    const total = source.getPageCount();
+    const blobs: Blob[] = [];
+    for (let i = 0; i < total; i++) {
+      const blob = await createPlaceholder(i, total);
+      blobs.push(blob);
+      onPage?.(i, blob, total);
+      await yieldToBrowser();
+    }
+    return blobs;
   }
-  return blobs;
 }
 
 /** Parses "1-3,5" into zero-based indices constrained to pageCount. */

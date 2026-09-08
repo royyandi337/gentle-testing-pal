@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { RotateCw, RotateCcw, X, GripVertical, Loader2, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { renderPdfThumbnails, type PdfPageSelection } from "@/lib/pdf";
+import { pdfInfo, renderPdfThumbnails, type PdfPageSelection } from "@/lib/pdf";
 
 export type PageItem = {
   id: string;
@@ -30,6 +30,7 @@ export function PdfThumbnailGrid({ files, mode, items, setItems, selectionMode =
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileIds = useRef(new Map<File, string>());
+  const processedFiles = useRef(new Set<File>());
 
   const getFileId = useCallback((file: File): string => {
     let id = fileIds.current.get(file);
@@ -40,54 +41,80 @@ export function PdfThumbnailGrid({ files, mode, items, setItems, selectionMode =
     return id;
   }, []);
 
+  // Process only new/removed files incrementally — don't re-render everything
   useEffect(() => {
-    if (!files.length) {
-      setItems([]);
-      setThumbnails({});
+    const currentFiles = new Set(files);
+    const newFiles = files.filter((f) => !processedFiles.current.has(f));
+    const removedFiles = [...processedFiles.current].filter((f) => !currentFiles.has(f));
+
+    if (removedFiles.length) {
+      for (const file of removedFiles) {
+        processedFiles.current.delete(file);
+        const fid = fileIds.current.get(file);
+        if (fid) {
+          setThumbnails((prev) => {
+            const next = { ...prev };
+            for (const key of Object.keys(next)) {
+              if (key.startsWith(`${fid}-p`)) {
+                URL.revokeObjectURL(next[key]);
+                delete next[key];
+              }
+            }
+            return next;
+          });
+          setItems((prev) => prev.filter((item) => item.fileId !== fid));
+        }
+      }
+    }
+
+    if (newFiles.length === 0) {
       return;
     }
 
     let cancelled = false;
     setRendering(true);
-    setRenderProgress({ done: 0, total: 0 });
+    setRenderProgress({ done: 0, total: newFiles.length });
 
     (async () => {
-      const allItems: PageItem[] = [];
-      const thumbMap: Record<string, string> = {};
-      let globalIndex = 0;
-
-      for (const file of files) {
+      let processed = 0;
+      for (const file of newFiles) {
         if (cancelled) return;
         const fileId = getFileId(file);
         try {
-          const blobs = await renderPdfThumbnails(file, (pageIndex, blob, total) => {
+          const { pages } = await pdfInfo(file);
+          const newItems: PageItem[] = Array.from({ length: pages }, (_, pageIndex) => ({
+            id: `${fileId}-p${pageIndex}`,
+            fileId,
+            fileName: file.name,
+            pageIndex,
+            rotation: 0,
+            excluded: false,
+            selected: false,
+          }));
+
+          // Show the page grid immediately; thumbnail rendering continues independently.
+          if (!cancelled) {
+            setItems((prev) => [...prev, ...newItems]);
+          }
+          processedFiles.current.add(file);
+
+          await renderPdfThumbnails(file, (pageIndex, blob) => {
             if (cancelled) return;
             const itemId = `${fileId}-p${pageIndex}`;
             const url = URL.createObjectURL(blob);
-            thumbMap[itemId] = url;
             setThumbnails((prev) => ({ ...prev, [itemId]: url }));
-            setRenderProgress({ done: pageIndex + 1 + globalIndex, total: 0 });
           });
-          globalIndex += blobs.length;
-          for (let i = 0; i < blobs.length; i++) {
-            const itemId = `${fileId}-p${i}`;
-            allItems.push({
-              id: itemId,
-              fileId,
-              fileName: file.name,
-              pageIndex: i,
-              rotation: 0,
-              excluded: false,
-              selected: false,
-            });
-          }
+          processed++;
+          setRenderProgress({ done: processed, total: newFiles.length });
         } catch (err) {
           console.error("Thumbnail render failed for", file.name, err);
+          processedFiles.current.add(file);
+          processed++;
+          setRenderProgress({ done: processed, total: newFiles.length });
         }
       }
 
       if (!cancelled) {
-        setItems(allItems);
         setRenderProgress(null);
         setRendering(false);
       }
@@ -95,13 +122,19 @@ export function PdfThumbnailGrid({ files, mode, items, setItems, selectionMode =
 
     return () => {
       cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files]);
+
+  // Cleanup all thumbnails on unmount
+  useEffect(() => {
+    return () => {
       setThumbnails((prev) => {
         Object.values(prev).forEach((url) => URL.revokeObjectURL(url));
         return {};
       });
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [files]);
+  }, []);
 
   useEffect(() => {
     if (onSelectionChange) {
@@ -178,9 +211,8 @@ export function PdfThumbnailGrid({ files, mode, items, setItems, selectionMode =
     setDropTargetId(null);
   }
 
-  const visibleItems = mode === "merge" ? items : items;
-  const activeCount = visibleItems.filter((item) => !item.excluded).length;
-  const selectedCount = visibleItems.filter((item) => item.selected && !item.excluded).length;
+  const activeCount = items.filter((item) => !item.excluded).length;
+  const selectedCount = items.filter((item) => item.selected && !item.excluded).length;
 
   return (
     <div className="space-y-3">
@@ -189,7 +221,7 @@ export function PdfThumbnailGrid({ files, mode, items, setItems, selectionMode =
         {rendering ? (
           <span className="flex items-center gap-1.5 text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" />
-            Merender thumbnail{renderProgress ? ` (${renderProgress.done})` : ""}...
+            Merender thumbnail{renderProgress ? ` (${renderProgress.done}/${renderProgress.total} file)` : ""}...
           </span>
         ) : mode === "merge" ? (
           <span className="font-medium text-foreground">
@@ -216,7 +248,7 @@ export function PdfThumbnailGrid({ files, mode, items, setItems, selectionMode =
         ref={containerRef}
         className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
       >
-        {visibleItems.map((item, idx) => {
+        {items.map((item, idx) => {
           const thumb = thumbnails[item.id];
           const isDragging = draggingId === item.id;
           const isDropTarget = dropTargetId === item.id;
@@ -356,7 +388,7 @@ export function PdfThumbnailGrid({ files, mode, items, setItems, selectionMode =
         })}
       </div>
 
-      {visibleItems.length === 0 && !rendering && (
+      {items.length === 0 && !rendering && (
         <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           {files.length === 0
             ? "Unggah PDF untuk melihat thumbnail halaman."
@@ -368,16 +400,15 @@ export function PdfThumbnailGrid({ files, mode, items, setItems, selectionMode =
 }
 
 export function buildSelections(items: PageItem[], files: File[]): PdfPageSelection[] {
-  const fileMap = new Map(files.map((f) => [`${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, f]));
-  const fileByItemId = new Map<string, File>();
+  const fileByFileId = new Map<string, File>();
   for (const file of files) {
-    const fid = items.find((item) => item.fileName === file.name)?.fileId;
-    if (fid) fileByItemId.set(fid, file);
+    const item = items.find((i) => i.fileName === file.name);
+    if (item) fileByFileId.set(item.fileId, file);
   }
   return items
     .filter((item) => !item.excluded)
     .map((item) => {
-      const file = fileByItemId.get(item.fileId) ?? files.find((f) => f.name === item.fileName)!;
+      const file = fileByFileId.get(item.fileId) ?? files.find((f) => f.name === item.fileName)!;
       return {
         file,
         pageIndex: item.pageIndex,
@@ -388,15 +419,15 @@ export function buildSelections(items: PageItem[], files: File[]): PdfPageSelect
 }
 
 export function buildSelectedOnly(items: PageItem[], files: File[]): PdfPageSelection[] {
-  const fileByItemId = new Map<string, File>();
+  const fileByFileId = new Map<string, File>();
   for (const file of files) {
-    const fid = items.find((item) => item.fileName === file.name)?.fileId;
-    if (fid) fileByItemId.set(fid, file);
+    const item = items.find((i) => i.fileName === file.name);
+    if (item) fileByFileId.set(item.fileId, file);
   }
   return items
     .filter((item) => item.selected && !item.excluded)
     .map((item) => {
-      const file = fileByItemId.get(item.fileId) ?? files.find((f) => f.name === item.fileName)!;
+      const file = fileByFileId.get(item.fileId) ?? files.find((f) => f.name === item.fileName)!;
       return {
         file,
         pageIndex: item.pageIndex,
