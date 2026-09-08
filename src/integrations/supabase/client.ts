@@ -29,15 +29,15 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 
 function createSupabaseClient() {
-  // Dot access is required: Vite only statically inlines `import.meta.env.VITE_*`,
-  // so bracket access can end up empty in production bundles.
+  // Values are inlined at build time by Vite; the literals below are a
+  // last-resort fallback so the app never hard-crashes if injection is missing.
   // Fall back to process.env for SSR (server-side rendering).
   const SUPABASE_URL =
-    import.meta.env.VITE_SUPABASE_URL ||
+    import.meta.env['VITE_SUPABASE_URL'] ||
     (typeof process !== 'undefined' ? process.env['SUPABASE_URL'] : undefined) ||
     'https://tgzamkzwjrvmkceglzza.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] ||
     (typeof process !== 'undefined' ? process.env['SUPABASE_PUBLISHABLE_KEY'] : undefined) ||
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnemFta3p3anJ2bWtjZWdsenphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxOTIwMzcsImV4cCI6MjEwMjc2ODAzN30.4v6nnb2-iyBvJgk9tAnM23IDr55dieUXkg5XQls3sdU';
 
