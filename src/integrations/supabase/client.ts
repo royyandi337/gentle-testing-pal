@@ -29,10 +29,17 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 
 function createSupabaseClient() {
-  // Use import.meta.env for client-side (Vite build-time replacement)
-  // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL'];
-  const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'];
+  // Dot access is required: Vite only statically inlines `import.meta.env.VITE_*`,
+  // so bracket access can end up empty in production bundles.
+  // Fall back to process.env for SSR (server-side rendering).
+  const SUPABASE_URL =
+    import.meta.env.VITE_SUPABASE_URL ||
+    (typeof process !== 'undefined' ? process.env['SUPABASE_URL'] : undefined) ||
+    'https://tgzamkzwjrvmkceglzza.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY =
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    (typeof process !== 'undefined' ? process.env['SUPABASE_PUBLISHABLE_KEY'] : undefined) ||
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnemFta3p3anJ2bWtjZWdsenphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxOTIwMzcsImV4cCI6MjEwMjc2ODAzN30.4v6nnb2-iyBvJgk9tAnM23IDr55dieUXkg5XQls3sdU';
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
