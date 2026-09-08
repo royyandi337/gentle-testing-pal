@@ -262,7 +262,14 @@ function loadCustomTemplates(): Template[] {
   try {
     const raw = localStorage.getItem(CUSTOM_STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as Template[];
+    const templates = JSON.parse(raw) as Template[];
+    return templates.map((template) => {
+      if (!template.custom || template.fields.length > 0) return template;
+      const detected = detectBlankFieldsInHtml(template.body);
+      return detected.fields.length > 0
+        ? { ...template, fields: detected.fields, body: detected.body, desc: `Templat tersimpan. ${detected.fields.length} kolom isian terdeteksi.` }
+        : template;
+    });
   } catch {
     return [];
   }
@@ -334,6 +341,18 @@ function detectBlankFields(text: string): { fields: TemplateField[]; body: strin
   return detectBlankFieldsInHtml(html);
 }
 
+function detectBlankFieldsFromPlainHtml(sourceHtml: string): { fields: TemplateField[]; body: string } {
+  const fields: TemplateField[] = [];
+  let counter = 0;
+  const body = sourceHtml.replace(/(?:[._…·•]\s*){3,}/g, () => {
+    counter += 1;
+    const key = `field_${counter}`;
+    fields.push({ key, label: `Kolom ${counter}`, placeholder: "isi di sini" });
+    return `{{${key}}}`;
+  });
+  return { fields, body };
+}
+
 function detectBlankFieldsInHtml(sourceHtml: string): { fields: TemplateField[]; body: string } {
   const fields: TemplateField[] = [];
   let counter = 0;
@@ -356,6 +375,15 @@ function detectBlankFieldsInHtml(sourceHtml: string): { fields: TemplateField[];
     });
   });
 
+  const blankPattern = /([._…·•․⋯﹒｡。\-–—])(?:\s*\1){2,}/gu;
+  root.querySelectorAll<HTMLElement>("p,td,th,li").forEach((block) => {
+    const value = block.textContent || "";
+    if (!blankPattern.test(value)) return;
+    blankPattern.lastIndex = 0;
+    const replaced = value.replace(blankPattern, () => addField("isi di sini"));
+    block.textContent = replaced;
+  });
+
   const textNodes: Text[] = [];
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let node: Node | null;
@@ -365,7 +393,7 @@ function detectBlankFieldsInHtml(sourceHtml: string): { fields: TemplateField[];
     const value = textNode.nodeValue || "";
     if (!value.trim()) continue;
     let next = value;
-    next = next.replace(/\.{3,}|_{3,}/g, () => addField("isi di sini"));
+    next = next.replace(/(?:[._…·•]\s*){3,}/g, () => addField("isi di sini"));
     next = next.replace(/\[([^\]]{1,60})\]/g, (_match, inner: string) => {
       const trimmed = inner.trim();
       if (/^_+$|^\.+$/.test(trimmed)) return addField("isi di sini");
@@ -387,7 +415,11 @@ function detectBlankFieldsInHtml(sourceHtml: string): { fields: TemplateField[];
     }
   });
 
-  return { fields, body: root.innerHTML };
+  const body = root.innerHTML;
+  if (fields.length === 0 && /(?:[._…·•]\s*){3,}/.test(root.textContent || "")) {
+    return detectBlankFieldsFromPlainHtml(sourceHtml);
+  }
+  return { fields, body };
 }
 
 function escapeHtml(value: string): string {
@@ -461,7 +493,16 @@ function TemplatSuratPage() {
   const showAddNew = activeCategory === "semua" || activeCategory === "custom";
 
   function selectTemplate(t: Template) {
-    setCurrent(t);
+    const repaired = t.custom && t.fields.length === 0 ? detectBlankFieldsInHtml(t.body) : null;
+    const nextTemplate = repaired && repaired.fields.length > 0
+      ? { ...t, fields: repaired.fields, body: repaired.body, desc: `Templat tersimpan. ${repaired.fields.length} kolom isian terdeteksi.` }
+      : t;
+    if (nextTemplate !== t && nextTemplate.custom) {
+      const updated = customTemplates.map((template) => template.id === t.id ? nextTemplate : template);
+      setCustomTemplates(updated);
+      saveCustomTemplates(updated);
+    }
+    setCurrent(nextTemplate);
     setFormData({});
     setWizardStep(1);
     setView("editor");

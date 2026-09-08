@@ -153,7 +153,7 @@ function Landing() {
                 Lihat semua fitur
               </a>
             </div>
-            <div className="mt-9 flex max-w-[480px] gap-7 border-t border-border pt-6">
+            <div className="mt-9 grid max-w-[480px] grid-cols-3 gap-3 border-t border-border pt-6 sm:gap-7">
               {[
                 ["7 alat", "foto & dokumen dalam satu akun"],
                 ["10 kredit", "AI gratis / hari di trial"],
@@ -267,7 +267,8 @@ function Landing() {
 
         {/* Comparison table */}
         <div className="mt-16 overflow-hidden rounded-[20px] border border-border bg-card">
-          <table className="w-full border-collapse">
+          <div className="overflow-x-auto">
+            <table className="min-w-[640px] w-full border-collapse">
             <thead>
               <tr>
                 <th className="border-b border-border bg-paper-dim px-5 py-4 text-left text-[13px] font-semibold text-slate" style={{ background: "var(--paper-dim)" }}>Fitur</th>
@@ -299,7 +300,8 @@ function Landing() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       </section>
 
