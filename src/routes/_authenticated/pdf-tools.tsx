@@ -1,17 +1,26 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { FileText } from "lucide-react";
+import { FileText, RotateCw, Scissors, Layers, FileOutput, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/AppShell";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { PdfToWordCard } from "@/components/shared/PdfToWordCard";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
+import {
+  PdfThumbnailGrid,
+  buildSelections,
+  buildSelectedOnly,
+  type PageItem,
+} from "@/components/shared/PdfThumbnailGrid";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { downloadBlob } from "@/lib/image";
 import {
+  assemblePdfPages,
   compressPdf,
   compressPdfToTarget,
   docxToPdf,
@@ -119,6 +128,12 @@ function PdfToolsPage() {
   const [compressTarget, setCompressTarget] = useState(1);
   const [batchFiles, setBatchFiles] = useState<File[]>([]);
 
+  // Thumbnail grid state for merge and manage modes
+  const [mergeItems, setMergeItems] = useState<PageItem[]>([]);
+  const [manageItems, setManageItems] = useState<PageItem[]>([]);
+  const [manageMode, setManageMode] = useState<"all" | "select">("all");
+  const [manageSelectedCount, setManageSelectedCount] = useState(0);
+
   const baseName = (file: File) => file.name.replace(/\.[^.]+$/, "");
 
   return (
@@ -215,138 +230,204 @@ function PdfToolsPage() {
           </ToolCard>
         </TabsContent>
 
-        <TabsContent value="manage" className="mt-4 grid gap-4 lg:grid-cols-2">
-          <ToolCard title="Gabung PDF" description="Gabungkan beberapa PDF sesuai urutan unggahan.">
-            <FileDropzone
-              accept="application/pdf"
-              multiple
-              files={mergeFiles}
-              onFiles={setMergeFiles}
-              hint="Minimal dua berkas PDF"
-            />
-            <Button
-              disabled={mergeFiles.length < 2 || phase === "working"}
-              onClick={() =>
-                run("merge", async () => [
-                  { blob: await mergePdfs(mergeFiles), fileName: "gabungan.pdf" },
-                ])
-              }
-            >
-              Gabungkan
-            </Button>
-          </ToolCard>
+        <TabsContent value="manage" className="mt-4 space-y-4">
+          {/* ===== GABUNG PDF ===== */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Layers className="size-4 text-primary" />
+                Gabung PDF
+              </CardTitle>
+              <CardDescription>
+                Unggah beberapa PDF, atur urutan halaman dengan drag-and-drop, buang halaman yang tidak perlu, lalu gabungkan.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FileDropzone
+                accept="application/pdf"
+                multiple
+                files={mergeFiles}
+                onFiles={setMergeFiles}
+                hint="Minimal dua berkas PDF"
+              />
+              {mergeFiles.length >= 2 && (
+                <PdfThumbnailGrid
+                  files={mergeFiles}
+                  mode="merge"
+                  items={mergeItems}
+                  setItems={setMergeItems}
+                />
+              )}
+              <Button
+                disabled={mergeFiles.length < 2 || phase === "working" || mergeItems.filter((i) => !i.excluded).length === 0}
+                onClick={() =>
+                  run("merge", async () => {
+                    const selections = buildSelections(mergeItems, mergeFiles);
+                    if (!selections.length) throw new Error("Pilih setidaknya satu halaman.");
+                    return [
+                      { blob: await assemblePdfPages(selections), fileName: "gabungan.pdf" },
+                    ];
+                  })
+                }
+              >
+                <Layers className="size-4" />
+                Gabungkan ({mergeItems.filter((i) => !i.excluded).length} halaman)
+              </Button>
+            </CardContent>
+          </Card>
 
-          <ToolCard
-            title="Pisah, Ekstrak, Putar & Kompres"
-            description="Pilih satu PDF lalu jalankan operasi yang dibutuhkan."
-          >
-            <FileDropzone
-              accept="application/pdf"
-              files={manageFile}
-              onFiles={async (files) => {
-                setManageFile(files);
-                const file = files[0];
-                if (file) {
-                  const info = await pdfInfo(file);
-                  setSplitAt(Math.max(1, Math.floor(info.pages / 2)));
-                }
-              }}
-              hint="Satu berkas PDF"
-            />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="ranges">Halaman (mis. 1-3,5)</Label>
-                <Input id="ranges" value={ranges} onChange={(e) => setRanges(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="splitAt">Pisah setelah halaman</Label>
-                <Input
-                  id="splitAt"
-                  type="number"
-                  min={1}
-                  value={splitAt}
-                  onChange={(e) => setSplitAt(Number(e.target.value))}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="angle">Rotasi (derajat)</Label>
-                <Input
-                  id="angle"
-                  type="number"
-                  step={90}
-                  value={angle}
-                  onChange={(e) => setAngle(Number(e.target.value))}
-                />
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="secondary"
-                disabled={!manageFile.length || phase === "working"}
-                onClick={() =>
-                  run("extract", async () => {
-                    const file = manageFile[0]!;
-                    const { pages: pageCount } = await pdfInfo(file);
-                    const indices = parsePageRanges(ranges, pageCount);
-                    return [
-                      { blob: await extractPages(file, indices), fileName: `${baseName(file)}-ekstrak.pdf` },
-                    ];
-                  })
-                }
-              >
-                Ekstrak halaman
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={!manageFile.length || phase === "working"}
-                onClick={() =>
-                  run("split", async () => {
-                    const file = manageFile[0]!;
-                    const [first, second] = await splitPdf(file, splitAt);
-                    return [
-                      { blob: first!, fileName: `${baseName(file)}-bagian-1.pdf` },
-                      { blob: second!, fileName: `${baseName(file)}-bagian-2.pdf` },
-                    ];
-                  })
-                }
-              >
-                Pisah
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={!manageFile.length || phase === "working"}
-                onClick={() =>
-                  run("rotate", async () => {
-                    const file = manageFile[0]!;
-                    const { pages: pageCount } = await pdfInfo(file);
-                    const indices = parsePageRanges(ranges, pageCount);
-                    return [
-                      {
-                        blob: await rotatePages(file, indices, angle),
-                        fileName: `${baseName(file)}-rotasi.pdf`,
-                      },
-                    ];
-                  })
-                }
-              >
-                Putar
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={!manageFile.length || phase === "working"}
-                onClick={() =>
-                  run("compress", async () => {
-                    const file = manageFile[0]!;
-                    return [
-                      { blob: await compressPdf(file), fileName: `${baseName(file)}-kompres.pdf` },
-                    ];
-                  })
-                }
-              >
-                Kompres
-              </Button>
-            </div>
-          </ToolCard>
+          {/* ===== PISAH, EKSTRAK, PUTAR & KOMPRES ===== */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Scissors className="size-4 text-primary" />
+                Pisah, Ekstrak, Putar & Kompres
+              </CardTitle>
+              <CardDescription>
+                Pilih satu PDF, lihat semua halaman sebagai thumbnail, putar/hapus halaman individual, lalu ekstrak atau pisah.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FileDropzone
+                accept="application/pdf"
+                files={manageFile}
+                onFiles={async (files) => {
+                  setManageFile(files);
+                  setManageItems([]);
+                  const file = files[0];
+                  if (file) {
+                    const info = await pdfInfo(file);
+                    setSplitAt(Math.max(1, Math.floor(info.pages / 2)));
+                  }
+                }}
+                hint="Satu berkas PDF"
+              />
+
+              {manageFile.length > 0 && (
+                <>
+                  {/* Mode toggle */}
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
+                    <span className="text-xs font-semibold text-foreground">Mode Ekstrak:</span>
+                    <button
+                      type="button"
+                      onClick={() => setManageMode("all")}
+                      className={cn(
+                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                        manageMode === "all"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/70",
+                      )}
+                    >
+                      <FileOutput className="mr-1 inline size-3" />
+                      Semua halaman aktif
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setManageMode("select")}
+                      className={cn(
+                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                        manageMode === "select"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/70",
+                      )}
+                    >
+                      <Sparkles className="mr-1 inline size-3" />
+                      Pilih halaman tertentu
+                    </button>
+                    {manageMode === "select" && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {manageSelectedCount} dipilih
+                      </Badge>
+                    )}
+                  </div>
+
+                  <PdfThumbnailGrid
+                    files={manageFile}
+                    mode="manage"
+                    items={manageItems}
+                    setItems={setManageItems}
+                    selectionMode={manageMode === "select"}
+                    onSelectionChange={setManageSelectedCount}
+                  />
+
+                  {/* Split control */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="splitAt">Pisah setelah halaman</Label>
+                      <Input
+                        id="splitAt"
+                        type="number"
+                        min={1}
+                        value={splitAt}
+                        onChange={(e) => setSplitAt(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="secondary"
+                      disabled={!manageFile.length || phase === "working"}
+                      onClick={() =>
+                        run("extract", async () => {
+                          const file = manageFile[0]!;
+                          if (manageMode === "select") {
+                            const selections = buildSelectedOnly(manageItems, manageFile);
+                            if (!selections.length) throw new Error("Pilih setidaknya satu halaman.");
+                            return [
+                              { blob: await assemblePdfPages(selections), fileName: `${baseName(file)}-ekstrak.pdf` },
+                            ];
+                          }
+                          const selections = buildSelections(manageItems, manageFile);
+                          if (!selections.length) throw new Error("Tidak ada halaman aktif.");
+                          return [
+                            { blob: await assemblePdfPages(selections), fileName: `${baseName(file)}-ekstrak.pdf` },
+                          ];
+                        })
+                      }
+                    >
+                      <FileOutput className="size-4" />
+                      {manageMode === "select"
+                        ? `Ekstrak ${manageSelectedCount} halaman terpilih`
+                        : `Ekstrak ${manageItems.filter((i) => !i.excluded).length} halaman aktif`}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={!manageFile.length || phase === "working"}
+                      onClick={() =>
+                        run("split", async () => {
+                          const file = manageFile[0]!;
+                          const [first, second] = await splitPdf(file, splitAt);
+                          return [
+                            { blob: first!, fileName: `${baseName(file)}-bagian-1.pdf` },
+                            { blob: second!, fileName: `${baseName(file)}-bagian-2.pdf` },
+                          ];
+                        })
+                      }
+                    >
+                      <Scissors className="size-4" />
+                      Pisah
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={!manageFile.length || phase === "working"}
+                      onClick={() =>
+                        run("compress", async () => {
+                          const file = manageFile[0]!;
+                          return [
+                            { blob: await compressPdf(file), fileName: `${baseName(file)}-kompres.pdf` },
+                          ];
+                        })
+                      }
+                    >
+                      Kompres
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="secure" className="mt-4 grid gap-4 lg:grid-cols-2">
