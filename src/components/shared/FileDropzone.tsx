@@ -27,7 +27,11 @@ export function FileDropzone({
     const dropped = Array.from(e.dataTransfer.files ?? []);
     if (dropped.length) {
       if (multiple && files) {
-        onFiles([...files, ...dropped]);
+        const existing = new Set(files.map((f) => `${f.name}-${f.size}-${f.lastModified}`));
+        onFiles([
+          ...files,
+          ...dropped.filter((f) => !existing.has(`${f.name}-${f.size}-${f.lastModified}`)),
+        ]);
       } else {
         onFiles(dropped.slice(0, multiple ? undefined : 1));
       }

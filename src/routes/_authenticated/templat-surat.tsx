@@ -287,16 +287,19 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
  * - .docx/.doc: use mammoth.extractRawText (dynamic import)
  * - .pdf: use pdfjs-dist to extract text content (dynamic import)
  */
-async function extractTextFromFile(file: File): Promise<string> {
+async function extractDocumentFromFile(file: File): Promise<{ text: string; html?: string }> {
   const name = file.name.toLowerCase();
   if (name.endsWith(".txt") || file.type === "text/plain") {
-    return await file.text();
+    return { text: await file.text() };
   }
   if (name.endsWith(".docx") || name.endsWith(".doc")) {
     const arrayBuffer = await file.arrayBuffer();
     const mammoth = await import("mammoth");
-    const result = await mammoth.extractRawText({ arrayBuffer });
-    return result.value;
+    const [rawResult, htmlResult] = await Promise.all([
+      mammoth.extractRawText({ arrayBuffer }),
+      mammoth.convertToHtml({ arrayBuffer }),
+    ]);
+    return { text: rawResult.value, html: htmlResult.value };
   }
   if (name.endsWith(".pdf") || file.type === "application/pdf") {
     const pdfjs = await import("pdfjs-dist");
@@ -313,7 +316,7 @@ async function extractTextFromFile(file: File): Promise<string> {
         .join(" ");
       parts.push(pageText);
     }
-    return parts.join("\n\n");
+    return { text: parts.join("\n\n") };
   }
   throw new Error("Format file tidak didukung.");
 }
@@ -323,50 +326,68 @@ async function extractTextFromFile(file: File): Promise<string> {
  * Patterns: underscores (____), dot-leader (....), square brackets ([...]),
  * and parenthesised placeholders like (nama) or (isi nama).
  */
-function detectBlankFields(text: string): {
-  fields: TemplateField[];
-  body: string;
-} {
+function detectBlankFields(text: string): { fields: TemplateField[]; body: string } {
+  const html = text
+    .split(/\n\s*\n/)
+    .map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br>")}</p>`)
+    .join("");
+  return detectBlankFieldsInHtml(html);
+}
+
+function detectBlankFieldsInHtml(sourceHtml: string): { fields: TemplateField[]; body: string } {
   const fields: TemplateField[] = [];
   let counter = 0;
-
-  const addField = (placeholder: string, index: number, label?: string) => {
+  const addField = (placeholder: string, label?: string) => {
     counter += 1;
     const key = `field_${counter}`;
-    fields.push({ key, label: label || `Kolom ${counter}`, placeholder, index });
+    fields.push({ key, label: label || `Kolom ${counter}`, placeholder });
     return `{{${key}}}`;
   };
 
-  // Scan the complete extracted text before converting it to HTML. The global
-  // expression keeps every dot-leader and underline as a separate field.
-  let body = text.replace(/\.{3,}|_{3,}/g, (match: string, index: number) =>
-    addField("isi di sini", index),
-  );
+  const parser = new DOMParser();
+  const document = parser.parseFromString(`<div>${sourceHtml}</div>`, "text/html");
+  const root = document.body.firstElementChild;
+  if (!root) return { fields, body: "" };
 
-  body = body.replace(/\[([^\]]{1,60})\]/g, (match: string, inner: string, index: number) => {
-    const trimmed = inner.trim();
-    if (/^_+$|^\.+$/.test(trimmed)) {
-      return addField("isi di sini", index);
-    }
-    const label = trimmed.length > 40 ? `Kolom ${counter + 1}` : trimmed;
-    return addField(trimmed, index, label);
+  root.querySelectorAll("script,style,iframe,object,embed").forEach((node) => node.remove());
+  root.querySelectorAll<HTMLElement>("*").forEach((element) => {
+    [...element.attributes].forEach((attribute) => {
+      if (attribute.name.toLowerCase().startsWith("on")) element.removeAttribute(attribute.name);
+    });
   });
 
-  body = body.replace(
-    /\((nama[^)]*|isi[^)]*|tempat[^)]*|tanggal[^)]*|alamat[^)]*|tanda tangan[^)]*)\)/gi,
-    (match: string, inner: string, index: number) => {
+  const textNodes: Text[] = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let node: Node | null;
+  while ((node = walker.nextNode())) textNodes.push(node as Text);
+
+  for (const textNode of textNodes) {
+    const value = textNode.nodeValue || "";
+    if (!value.trim()) continue;
+    let next = value;
+    next = next.replace(/\.{3,}|_{3,}/g, () => addField("isi di sini"));
+    next = next.replace(/\[([^\]]{1,60})\]/g, (_match, inner: string) => {
       const trimmed = inner.trim();
-      const label = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-      return addField(trimmed, index, label);
-    },
-  );
+      if (/^_+$|^\.+$/.test(trimmed)) return addField("isi di sini");
+      return addField(trimmed, trimmed.length > 40 ? undefined : trimmed);
+    });
+    next = next.replace(
+      /\((nama[^)]*|isi[^)]*|tempat[^)]*|tanggal[^)]*|alamat[^)]*|tanda tangan[^)]*)\)/gi,
+      (_match, inner: string) => {
+        const trimmed = inner.trim();
+        return addField(trimmed, trimmed.charAt(0).toUpperCase() + trimmed.slice(1));
+      },
+    );
+    if (next !== value) textNode.nodeValue = next;
+  }
 
-  const html = body
-    .split(/\n\s*\n/)
-    .map((para) => `<p>${para.replace(/\n/g, "<br>")}</p>`)
-    .join("");
+  root.querySelectorAll<HTMLTableCellElement>("td,th").forEach((cell) => {
+    if (!cell.textContent?.trim()) {
+      cell.innerHTML = addField("isi di sini", "Isi kolom");
+    }
+  });
 
-  return { fields, body: html };
+  return { fields, body: root.innerHTML };
 }
 
 function escapeHtml(value: string): string {
@@ -540,13 +561,17 @@ function TemplatSuratPage() {
 
     setUploadProcessing(true);
     try {
-      const text = await extractTextFromFile(file);
+      const { text, html } = await extractDocumentFromFile(file);
       if (!text.trim()) {
         toast.error("Tidak ada teks yang bisa dibaca dari file ini.");
         return;
       }
 
-      const { fields, body } = detectBlankFields(text);
+      const detected = html
+        ? detectBlankFieldsInHtml(html)
+        : detectBlankFields(text);
+      const fields = detected.fields;
+      const body = detected.body;
       const templateName = file.name.replace(/\.[^.]+$/, "");
       const newTemplate: Template = {
         id: "custom-" + Date.now(),

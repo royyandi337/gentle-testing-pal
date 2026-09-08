@@ -6,6 +6,7 @@ import { pdfInfo, renderPdfThumbnails, type PdfPageSelection } from "@/lib/pdf";
 export type PageItem = {
   id: string;
   fileId: string;
+  file: File;
   fileName: string;
   pageIndex: number;
   rotation: number;
@@ -82,9 +83,11 @@ export function PdfThumbnailGrid({ files, mode, items, setItems, selectionMode =
         const fileId = getFileId(file);
         try {
           const { pages } = await pdfInfo(file);
+          if (cancelled) return;
           const newItems: PageItem[] = Array.from({ length: pages }, (_, pageIndex) => ({
             id: `${fileId}-p${pageIndex}`,
             fileId,
+            file,
             fileName: file.name,
             pageIndex,
             rotation: 0,
@@ -96,7 +99,7 @@ export function PdfThumbnailGrid({ files, mode, items, setItems, selectionMode =
           if (!cancelled) {
             setItems((prev) => [...prev, ...newItems]);
           }
-          processedFiles.current.add(file);
+          if (!cancelled) processedFiles.current.add(file);
 
           await renderPdfThumbnails(file, (pageIndex, blob) => {
             if (cancelled) return;
@@ -399,40 +402,22 @@ export function PdfThumbnailGrid({ files, mode, items, setItems, selectionMode =
   );
 }
 
-export function buildSelections(items: PageItem[], files: File[]): PdfPageSelection[] {
-  const fileByFileId = new Map<string, File>();
-  for (const file of files) {
-    const item = items.find((i) => i.fileName === file.name);
-    if (item) fileByFileId.set(item.fileId, file);
-  }
+export function buildSelections(items: PageItem[], _files: File[]): PdfPageSelection[] {
   return items
     .filter((item) => !item.excluded)
-    .map((item) => {
-      const file = fileByFileId.get(item.fileId) ?? files.find((f) => f.name === item.fileName)!;
-      return {
-        file,
-        pageIndex: item.pageIndex,
-        rotation: item.rotation,
-      };
-    })
-    .filter((selection) => selection.file);
+    .map((item) => ({
+      file: item.file,
+      pageIndex: item.pageIndex,
+      rotation: item.rotation,
+    }));
 }
 
-export function buildSelectedOnly(items: PageItem[], files: File[]): PdfPageSelection[] {
-  const fileByFileId = new Map<string, File>();
-  for (const file of files) {
-    const item = items.find((i) => i.fileName === file.name);
-    if (item) fileByFileId.set(item.fileId, file);
-  }
+export function buildSelectedOnly(items: PageItem[], _files: File[]): PdfPageSelection[] {
   return items
     .filter((item) => item.selected && !item.excluded)
-    .map((item) => {
-      const file = fileByFileId.get(item.fileId) ?? files.find((f) => f.name === item.fileName)!;
-      return {
-        file,
-        pageIndex: item.pageIndex,
-        rotation: item.rotation,
-      };
-    })
-    .filter((selection) => selection.file);
+    .map((item) => ({
+      file: item.file,
+      pageIndex: item.pageIndex,
+      rotation: item.rotation,
+    }));
 }
