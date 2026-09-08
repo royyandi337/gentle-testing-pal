@@ -176,6 +176,12 @@ export type Database = {
           manual_payment_info: string
           payment_gateway: string
           payment_mode: string
+          price_monthly: number
+          price_monthly_enabled: boolean
+          price_weekly: number
+          price_weekly_enabled: boolean
+          price_yearly: number
+          price_yearly_enabled: boolean
           site_address: string
           site_name: string
           site_name_main: string
@@ -191,6 +197,12 @@ export type Database = {
           manual_payment_info?: string
           payment_gateway?: string
           payment_mode?: string
+          price_monthly?: number
+          price_monthly_enabled?: boolean
+          price_weekly?: number
+          price_weekly_enabled?: boolean
+          price_yearly?: number
+          price_yearly_enabled?: boolean
           site_address?: string
           site_name?: string
           site_name_main?: string
@@ -206,6 +218,12 @@ export type Database = {
           manual_payment_info?: string
           payment_gateway?: string
           payment_mode?: string
+          price_monthly?: number
+          price_monthly_enabled?: boolean
+          price_weekly?: number
+          price_weekly_enabled?: boolean
+          price_yearly?: number
+          price_yearly_enabled?: boolean
           site_address?: string
           site_name?: string
           site_name_main?: string

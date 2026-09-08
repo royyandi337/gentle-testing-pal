@@ -12,6 +12,12 @@ export type SiteSettings = {
   payment_gateway: string;
   manual_payment_info: string;
   accent_color: string;
+  price_weekly: number;
+  price_monthly: number;
+  price_yearly: number;
+  price_weekly_enabled: boolean;
+  price_monthly_enabled: boolean;
+  price_yearly_enabled: boolean;
 };
 
 const DEFAULT_SETTINGS: SiteSettings = {
@@ -25,6 +31,12 @@ const DEFAULT_SETTINGS: SiteSettings = {
   payment_gateway: "Midtrans",
   manual_payment_info: "",
   accent_color: "#C79A46",
+  price_weekly: 15000,
+  price_monthly: 29000,
+  price_yearly: 290000,
+  price_weekly_enabled: false,
+  price_monthly_enabled: true,
+  price_yearly_enabled: true,
 };
 
 let cached: SiteSettings | null = null;
@@ -38,7 +50,7 @@ function notifyAll(settings: SiteSettings) {
 async function fetchSettings(): Promise<SiteSettings> {
   const { data } = await supabase
     .from("site_settings")
-    .select("site_name, site_name_main, site_name_sub, site_address, site_tagline, logo_data_url, payment_mode, payment_gateway, manual_payment_info, accent_color")
+    .select("site_name, site_name_main, site_name_sub, site_address, site_tagline, logo_data_url, payment_mode, payment_gateway, manual_payment_info, accent_color, price_weekly, price_monthly, price_yearly, price_weekly_enabled, price_monthly_enabled, price_yearly_enabled")
     .eq("id", true)
     .maybeSingle();
   if (!data) return cached ?? DEFAULT_SETTINGS;
@@ -53,6 +65,12 @@ async function fetchSettings(): Promise<SiteSettings> {
     payment_gateway: data.payment_gateway || DEFAULT_SETTINGS.payment_gateway,
     manual_payment_info: data.manual_payment_info || "",
     accent_color: data.accent_color || DEFAULT_SETTINGS.accent_color,
+    price_weekly: data.price_weekly ?? DEFAULT_SETTINGS.price_weekly,
+    price_monthly: data.price_monthly ?? DEFAULT_SETTINGS.price_monthly,
+    price_yearly: data.price_yearly ?? DEFAULT_SETTINGS.price_yearly,
+    price_weekly_enabled: data.price_weekly_enabled ?? false,
+    price_monthly_enabled: data.price_monthly_enabled ?? true,
+    price_yearly_enabled: data.price_yearly_enabled ?? true,
   };
 }
 
