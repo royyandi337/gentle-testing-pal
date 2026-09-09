@@ -592,9 +592,8 @@ function PasFotoPage() {
 
           {step === 3 ? (
             <div className="flex flex-col gap-4 lg:flex-row">
-              {/* Preview column — sticky on desktop, sticky-top on mobile */}
-              <div className="lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:w-[minmax(0,1fr)] lg:flex-shrink-0">
-                <div className="sticky top-0 z-10 -mx-4 mb-4 bg-background/80 px-4 pb-3 pt-2 backdrop-blur-md lg:static lg:z-auto lg:mx-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+              {/* Preview column — left on desktop (sticky), sticky-top on mobile */}
+              <div className="sticky top-0 z-50 max-h-[35vh] overflow-y-auto bg-background/80 px-4 pb-3 pt-2 backdrop-blur-md lg:sticky lg:top-4 lg:z-auto lg:max-h-none lg:overflow-visible lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0 lg:backdrop-blur-none lg:h-[calc(100vh-2rem)] lg:flex-1 lg:flex-shrink-0">
                   <Card className="border shadow-sm">
                     <CardHeader>
                       <CardTitle className="text-base">3. Preview Pas Foto</CardTitle>
@@ -689,11 +688,10 @@ function PasFotoPage() {
                       </div>
                     </CardContent>
                   </Card>
-                </div>
               </div>
 
-              {/* Controls column — scrollable on desktop, below preview on mobile */}
-              <div className="space-y-4 lg:h-[calc(100vh-2rem)] lg:w-[380px] lg:flex-shrink-0 lg:overflow-y-auto lg:pr-1">
+              {/* Controls column — right on desktop (scrollable), below preview on mobile */}
+              <div className="space-y-4 lg:w-[380px] lg:flex-shrink-0 lg:overflow-y-auto lg:h-[calc(100vh-2rem)] lg:pr-1">
                 <Card className="border shadow-sm">
                   <CardHeader>
                     <CardTitle className="text-base">Ukuran Pas Foto</CardTitle>
@@ -1023,9 +1021,8 @@ function PasFotoPage() {
 
           {step === 5 ? (
             <div className="flex flex-col gap-4 lg:flex-row">
-              {/* Preview column — sticky on desktop, sticky-top on mobile */}
-              <div className="lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:w-[minmax(0,1fr)] lg:flex-shrink-0">
-                <div className="sticky top-0 z-10 -mx-4 mb-4 bg-background/80 px-4 pb-3 pt-2 backdrop-blur-md lg:static lg:z-auto lg:mx-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+              {/* Preview column — left on desktop (sticky), sticky-top on mobile */}
+              <div className="sticky top-0 z-50 max-h-[35vh] overflow-y-auto bg-background/80 px-4 pb-3 pt-2 backdrop-blur-md lg:sticky lg:top-4 lg:z-auto lg:max-h-none lg:overflow-visible lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0 lg:backdrop-blur-none lg:h-[calc(100vh-2rem)] lg:flex-1 lg:flex-shrink-0">
                   <Card className="border shadow-sm">
                     <CardHeader>
                       <CardTitle className="text-base">5. Lembar Cetak</CardTitle>
@@ -1051,11 +1048,10 @@ function PasFotoPage() {
                       />
                     </CardContent>
                   </Card>
-                </div>
               </div>
 
-              {/* Controls column — scrollable on desktop, below preview on mobile */}
-              <div className="space-y-4 lg:h-[calc(100vh-2rem)] lg:w-[380px] lg:flex-shrink-0 lg:overflow-y-auto lg:pr-1">
+              {/* Controls column — right on desktop (scrollable), below preview on mobile */}
+              <div className="space-y-4 lg:w-[380px] lg:flex-shrink-0 lg:overflow-y-auto lg:h-[calc(100vh-2rem)] lg:pr-1">
                 <Card className="border shadow-sm">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
