@@ -61,6 +61,27 @@ export type Database = {
           },
         ]
       }
+      feature_credit_costs: {
+        Row: {
+          cost: number
+          feature_key: string
+          label: string
+          updated_at: string
+        }
+        Insert: {
+          cost?: number
+          feature_key: string
+          label: string
+          updated_at?: string
+        }
+        Update: {
+          cost?: number
+          feature_key?: string
+          label?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       processed_files: {
         Row: {
           created_at: string
@@ -331,7 +352,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      deduct_credit: { Args: { p_feature_key?: string }; Returns: number }
+      deduct_credit: { Args: { p_feature_key: string }; Returns: number }
       get_all_users: {
         Args: never
         Returns: {
@@ -347,17 +368,28 @@ export type Database = {
       get_sidebar_user_data: {
         Args: never
         Returns: {
+          avatar_url: string
+          role: Database["public"]["Enums"]["app_role"]
           tier: Database["public"]["Enums"]["app_tier"]
-          role: Database["public"]["Enums"]["app_role"] | null
-          avatar_url: string | null
-          trial_expires_at: string | null
+          trial_expires_at: string
         }[]
+      }
+      update_feature_cost: {
+        Args: { p_cost: number; p_feature_key: string }
+        Returns: undefined
+      }
+      update_user_tier: {
+        Args: {
+          new_tier: Database["public"]["Enums"]["app_tier"]
+          target_user_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
       ai_job_status: "queued" | "processing" | "completed" | "failed"
       ai_job_type: "background_removal" | "image_enhancement" | "auto_photo"
-      app_role: "owner" | "admin" | "advertiser" | "user"
+      app_role: "owner" | "admin" | "user" | "advertiser"
       app_tier: "trial" | "regular" | "premium"
     }
     CompositeTypes: {
@@ -488,7 +520,7 @@ export const Constants = {
     Enums: {
       ai_job_status: ["queued", "processing", "completed", "failed"],
       ai_job_type: ["background_removal", "image_enhancement", "auto_photo"],
-      app_role: ["owner", "admin", "advertiser", "user"],
+      app_role: ["owner", "admin", "user", "advertiser"],
       app_tier: ["trial", "regular", "premium"],
     },
   },
