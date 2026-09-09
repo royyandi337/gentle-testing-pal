@@ -1,4 +1,8 @@
 import { useCredits } from "@/hooks/useCredits";
+import { getEffectiveRole, shouldShowAdSlot } from "@/lib/permissions";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export type AdSlotVariant = "banner" | "sidebar" | "inline";
@@ -23,12 +27,34 @@ export function AdSlot({
   className?: string;
 }) {
   const { tier, loading } = useCredits();
+  const { user } = useAuth();
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setRole(null);
+      return;
+    }
+    let active = true;
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (active) setRole(data?.role ?? null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   if (loading) {
     return <Skeleton className={`${VARIANT_CLASSES[variant]} ${className ?? ""}`} />;
   }
 
-  if (tier === "premium") return null;
+  const effectiveRole = getEffectiveRole(role as AppRole, tier);
+  if (!shouldShowAdSlot(effectiveRole)) return null;
 
   return (
     <div
@@ -44,3 +70,5 @@ export function AdSlot({
     </div>
   );
 }
+
+type AppRole = "owner" | "admin" | "advertiser" | "user";

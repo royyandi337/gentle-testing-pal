@@ -49,6 +49,15 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useCredits, type Tier } from "@/hooks/useCredits";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import {
+  getEffectiveRole,
+  shouldShowAdSlot,
+  shouldShowUpgradeCTA,
+  canManageSite,
+  isAdvertiser as isAdvertiserRole,
+  type EffectiveRole,
+  type AppRole,
+} from "@/lib/permissions";
 
 export const NAV_GROUPS = [
   { label: "Utama", items: [{ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard }] },
@@ -72,10 +81,8 @@ export const NAV_GROUPS = [
   { label: "Arsip", items: [{ to: "/riwayat", label: "Riwayat", icon: FolderClock }] },
 ] as const;
 
-type SidebarRole = "owner" | "admin" | "advertiser" | "user";
-
 type SidebarAccount = {
-  role: SidebarRole;
+  role: AppRole;
   avatarUrl: string | null;
   trialExpiresAt: string | null;
   loading: boolean;
@@ -93,15 +100,16 @@ function AccountStatusCard({
   loading,
 }: {
   tier: Tier;
-  role: SidebarRole;
+  role: AppRole;
   trialExpiresAt: string | null;
   loading: boolean;
 }) {
+  const effective = getEffectiveRole(role, tier);
   if (loading) {
     return <Skeleton className="mx-2 mb-2 h-[76px] rounded-xl bg-white/10" />;
   }
 
-  if (role === "owner") {
+  if (effective === "owner") {
     return (
       <div className="mx-2 mb-2 rounded-xl border border-accent/30 bg-accent/10 px-3 py-2.5">
         <div className="flex items-center gap-2 text-accent">
@@ -113,7 +121,7 @@ function AccountStatusCard({
     );
   }
 
-  if (role === "advertiser") {
+  if (effective === "advertiser") {
     return (
       <div className="mx-2 mb-2 rounded-xl border border-sky-400/30 bg-sky-400/10 px-3 py-2.5">
         <div className="flex items-center gap-2 text-sky-300">
@@ -213,8 +221,9 @@ export function AppSidebar() {
     };
   }, [user]);
 
-  const isOwner = account.role === "owner";
-  const isAdvertiser = account.role === "advertiser";
+  const effectiveRole = getEffectiveRole(account.role, tier);
+  const isOwner = canManageSite(effectiveRole);
+  const isAdvertiser = isAdvertiserRole(effectiveRole);
   const accountLoading = authLoading || account.loading || creditsLoading;
   const email = user?.email ?? "";
   const initials = email.slice(0, 2).toUpperCase() || "RD";
@@ -264,12 +273,12 @@ export function AppSidebar() {
 
       <div className="shrink-0 space-y-2 border-t border-sidebar-border px-2 py-2 group-data-[collapsible=icon]:hidden">
         <CreditIndicator />
-        <div className="min-h-40">{!isOwner && !isAdvertiser ? <AdSlot variant="sidebar" /> : null}</div>
+        <div className="min-h-40">{shouldShowAdSlot(effectiveRole) ? <AdSlot variant="sidebar" /> : null}</div>
       </div>
 
       <SidebarFooter className="shrink-0 border-t border-sidebar-border">
         <AccountStatusCard tier={tier} role={account.role} trialExpiresAt={account.trialExpiresAt} loading={accountLoading} />
-        {tier === "regular" && !isOwner && !isAdvertiser ? <Link to="/akun" className="mx-2 mb-2 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 group-data-[collapsible=icon]:hidden"><Crown className="size-3.5" /> Upgrade</Link> : null}
+        {shouldShowUpgradeCTA(effectiveRole) ? <Link to="/akun" className="mx-2 mb-2 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 group-data-[collapsible=icon]:hidden"><Crown className="size-3.5" /> Upgrade</Link> : null}
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>

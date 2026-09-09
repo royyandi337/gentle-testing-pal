@@ -1,6 +1,7 @@
 import { Zap, Loader2, Crown } from "lucide-react";
 import { useCredits } from "@/hooks/useCredits";
 import { cn } from "@/lib/utils";
+import { hasUnlimitedAI, getEffectiveRole, type AppRole } from "@/lib/permissions";
 
 export function CreditIndicator({ className }: { className?: string }) {
   const { remaining, tier, dailyLimit, loading } = useCredits();
@@ -19,7 +20,9 @@ export function CreditIndicator({ className }: { className?: string }) {
     );
   }
 
-  if (tier === "premium" || remaining === -1) {
+  const effective = getEffectiveRole(null, tier);
+
+  if (hasUnlimitedAI(effective) || remaining === -1) {
     return (
       <div
         className={cn(
