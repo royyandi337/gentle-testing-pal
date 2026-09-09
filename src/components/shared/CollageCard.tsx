@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   X,
   Plus,
@@ -25,7 +25,13 @@ import { saveResult } from "@/lib/history";
 
 type LayoutId = "2x2" | "1x2" | "2x1" | "2x3" | "3x3";
 
-const LAYOUTS: { id: LayoutId; label: string; cols: number; rows: number; slots: number }[] = [
+const LAYOUTS: {
+  id: LayoutId;
+  label: string;
+  cols: number;
+  rows: number;
+  slots: number;
+}[] = [
   { id: "2x2", label: "2 × 2", cols: 2, rows: 2, slots: 4 },
   { id: "1x2", label: "1 × 2", cols: 2, rows: 1, slots: 2 },
   { id: "2x1", label: "2 × 1", cols: 1, rows: 2, slots: 2 },
@@ -51,13 +57,26 @@ const BG_COLORS = [
   { value: "#F2E6C9", label: "Krem" },
 ];
 
-const CANVAS_SIZE = 1200;
+const SHAPE_CLIP_PATHS: Record<ShapeId, string> = {
+  square: "none",
+  circle: "circle(50%)",
+  triangle: "polygon(50% 0%, 100% 100%, 0% 100%)",
+  diamond: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
+  hexagon: "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)",
+  star: "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)",
+  heart: "polygon(50% 100%, 5% 45%, 5% 25%, 20% 5%, 35% 5%, 50% 25%, 65% 5%, 80% 5%, 95% 25%, 95% 45%)",
+};
 
-// Portrait = 3:4 aspect ratio, Landscape = 4:3 aspect ratio
+const CANVAS_SIZE = 1200;
 const PORTRAIT_RATIO = 3 / 4;
 const LANDSCAPE_RATIO = 4 / 3;
 
-type LoadedImage = { id: string; name: string; url: string; img: HTMLImageElement };
+type LoadedImage = {
+  id: string;
+  name: string;
+  url: string;
+  img: HTMLImageElement;
+};
 type TextOverlay = {
   id: string;
   text: string;
@@ -76,7 +95,6 @@ export function CollageCard() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const previewRef = useRef<HTMLCanvasElement>(null);
 
   const layoutDef = LAYOUTS.find((l) => l.id === layoutId) ?? LAYOUTS[0]!;
   const slots = layoutDef.slots;
@@ -85,6 +103,7 @@ export function CollageCard() {
 
   const isLandscape = orientation === "landscape";
   const pageRatio = isLandscape ? LANDSCAPE_RATIO : PORTRAIT_RATIO;
+  const clipPath = SHAPE_CLIP_PATHS[shape];
 
   async function handleFiles(files: File[]) {
     const valid = files.filter((f) => f.type.startsWith("image/"));
@@ -134,12 +153,8 @@ export function CollageCard() {
 
   const renderCollage = useCallback((): HTMLCanvasElement => {
     const canvas = document.createElement("canvas");
-    // Use the paper aspect ratio (3:4 portrait / 4:3 landscape) for the canvas,
-    // then fit the grid cells inside it. This ensures orientation always
-    // produces a visually distinct result.
     canvas.width = CANVAS_SIZE;
     canvas.height = Math.round(CANVAS_SIZE / pageRatio);
-    // For landscape, swap so width > height
     if (isLandscape) {
       canvas.width = Math.round(CANVAS_SIZE / pageRatio);
       canvas.height = CANVAS_SIZE;
@@ -168,7 +183,10 @@ export function CollageCard() {
         continue;
       }
       const img = item.img;
-      const scale = Math.max(cellW / img.naturalWidth, cellH / img.naturalHeight);
+      const scale = Math.max(
+        cellW / img.naturalWidth,
+        cellH / img.naturalHeight,
+      );
       const w = img.naturalWidth * scale;
       const h = img.naturalHeight * scale;
       ctx.save();
@@ -214,7 +232,14 @@ export function CollageCard() {
           const h2 = cellH / 2;
           ctx.moveTo(x + w2, y + h2 * 0.3);
           ctx.bezierCurveTo(x + w2, y, x, y, x + w2 * 0.1, y + h2 * 0.1);
-          ctx.bezierCurveTo(x, y + h2 * 0.5, x + w2, y + h2 * 0.8, x + w2, y + h2);
+          ctx.bezierCurveTo(
+            x,
+            y + h2 * 0.5,
+            x + w2,
+            y + h2 * 0.8,
+            x + w2,
+            y + h2,
+          );
           ctx.bezierCurveTo(
             x + w2,
             y + h2 * 0.8,
@@ -249,19 +274,18 @@ export function CollageCard() {
     }
 
     return canvas;
-  }, [images, layoutDef, slots, spacing, bgColor, shape, texts, orientation, isLandscape, pageRatio]);
-
-  // Re-render preview whenever any visual parameter changes — including orientation
-  useEffect(() => {
-    if (!previewRef.current || !images.length) return;
-    const canvas = renderCollage();
-    const preview = previewRef.current;
-    preview.width = canvas.width;
-    preview.height = canvas.height;
-    const ctx = preview.getContext("2d")!;
-    ctx.clearRect(0, 0, preview.width, preview.height);
-    ctx.drawImage(canvas, 0, 0);
-  }, [renderCollage, images.length, orientation, layoutId, shape, bgColor, spacing, texts]);
+  }, [
+    images,
+    layoutDef,
+    slots,
+    spacing,
+    bgColor,
+    shape,
+    texts,
+    orientation,
+    isLandscape,
+    pageRatio,
+  ]);
 
   async function download(format: "jpg" | "png" | "pdf") {
     if (!images.length) return;
@@ -275,9 +299,16 @@ export function CollageCard() {
       if (format === "pdf") {
         const { PDFDocument } = await import("pdf-lib");
         const doc = await PDFDocument.create();
-        const embedded = await doc.embedJpg(new Uint8Array(await blob.arrayBuffer()));
+        const embedded = await doc.embedJpg(
+          new Uint8Array(await blob.arrayBuffer()),
+        );
         const page = doc.addPage([canvas.width, canvas.height]);
-        page.drawImage(embedded, { x: 0, y: 0, width: canvas.width, height: canvas.height });
+        page.drawImage(embedded, {
+          x: 0,
+          y: 0,
+          width: canvas.width,
+          height: canvas.height,
+        });
         const bytes = await doc.save();
         const pdf = new Blob([bytes.slice().buffer as ArrayBuffer], {
           type: "application/pdf",
@@ -307,17 +338,30 @@ export function CollageCard() {
   function addText() {
     setTexts((prev) => [
       ...prev,
-      { id: `text-${Date.now()}-${Math.random()}`, text: "", size: 24, position: "bawah" },
+      {
+        id: `text-${Date.now()}-${Math.random()}`,
+        text: "",
+        size: 24,
+        position: "bawah",
+      },
     ]);
   }
   function updateText(id: string, key: keyof TextOverlay, value: string | number) {
-    setTexts((prev) => prev.map((t) => (t.id === id ? { ...t, [key]: value } : t)));
+    setTexts((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, [key]: value } : t)),
+    );
   }
   function removeText(id: string) {
     setTexts((prev) => prev.filter((t) => t.id !== id));
   }
 
   const filledSlots = Math.min(images.length, slots);
+  const textPositionStyle = (pos: TextOverlay["position"]): React.CSSProperties => {
+    if (pos === "atas") return { top: "8px" };
+    if (pos === "tengah")
+      return { top: "50%", transform: "translateY(-50%)" };
+    return { bottom: "8px" };
+  };
 
   return (
     <Card>
@@ -326,13 +370,14 @@ export function CollageCard() {
           <LayoutGrid className="size-4 text-muted-foreground" /> Kolase Foto
         </CardTitle>
         <CardDescription>
-          Susun beberapa foto jadi satu kolase dengan berbagai layout dan bentuk kreatif.
+          Susun beberapa foto jadi satu kolase dengan berbagai layout dan bentuk
+          kreatif.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col gap-4 w-full lg:grid lg:grid-cols-12 lg:gap-6 lg:items-start">
-          {/* Left — Preview: sticky-top on mobile, col-span-7 on desktop */}
-          <div className="w-full max-h-[35vh] overflow-hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b p-2 lg:col-span-7 lg:sticky lg:top-6 lg:z-auto lg:max-h-none lg:overflow-visible lg:bg-transparent lg:backdrop-blur-none lg:border-0 lg:p-0">
+        <div className="flex flex-col gap-4 w-full lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start">
+          {/* ===== LEFT: Preview Canvas (sticky) ===== */}
+          <div className="w-full max-h-[40vh] overflow-hidden flex items-center justify-center lg:col-span-7 lg:sticky lg:top-4 lg:max-h-none lg:overflow-visible">
             {!images.length ? (
               <div className="w-full">
                 <FileDropzone
@@ -343,21 +388,75 @@ export function CollageCard() {
                 />
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-3">
+              <div className="flex w-full flex-col items-center gap-3">
+                {/* --- The single collage canvas container --- */}
                 <div
-                  key={`preview-${orientation}`}
-                  className={`w-full overflow-hidden bg-gray-50 rounded-lg p-4 flex items-center justify-center ${
+                  className={`relative overflow-hidden w-full h-auto mx-auto bg-white shadow-md border rounded-lg max-w-full lg:max-w-[65vh] ${
                     isLandscape ? "aspect-[4/3]" : "aspect-[3/4]"
                   }`}
                 >
-                  <canvas
-                    ref={previewRef}
-                    className="w-full h-auto max-h-[75vh] object-contain mx-auto"
-                  />
+                  {/* Grid of photos — pure CSS grid, no absolute positioning */}
+                  <div
+                    className="grid h-full w-full p-2"
+                    style={{
+                      gridTemplateColumns: `repeat(${layoutDef.cols}, 1fr)`,
+                      gridTemplateRows: `repeat(${layoutDef.rows}, 1fr)`,
+                      gap: `${spacing}px`,
+                      backgroundColor: bgColor,
+                    }}
+                  >
+                    {Array.from({ length: slots }).map((_, i) => {
+                      const item = images[i];
+                      return (
+                        <div
+                          key={i}
+                          className="w-full h-full overflow-hidden relative"
+                          style={{
+                            clipPath:
+                              shape !== "square" ? clipPath : undefined,
+                          }}
+                        >
+                          {item ? (
+                            <img
+                              src={item.url}
+                              alt={item.name}
+                              loading="lazy"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full border-2 border-dashed border-gray-300 bg-gray-100" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Text overlays — absolutely positioned over the grid */}
+                  {texts.map((t) => (
+                    <div
+                      key={t.id}
+                      className="absolute left-0 right-0 px-2 text-center"
+                      style={textPositionStyle(t.position)}
+                    >
+                      <span
+                        className="font-bold whitespace-nowrap"
+                        style={{
+                          fontSize: `${t.size}px`,
+                          color: "#fff",
+                          textShadow:
+                            "0 0 3px rgba(0,0,0,0.7), 0 0 3px rgba(0,0,0,0.7)",
+                        }}
+                      >
+                        {t.text}
+                      </span>
+                    </div>
+                  ))}
                 </div>
+
                 <p className="text-xs text-muted-foreground">
                   {filledSlots} dari {slots} slot terisi · {orientation}
                 </p>
+
                 <div className="flex w-full flex-wrap gap-2">
                   <Button
                     size="sm"
@@ -384,16 +483,19 @@ export function CollageCard() {
                     <Download className="size-4" /> PDF
                   </Button>
                 </div>
+
                 <ProcessState phase={phase} message={message} />
               </div>
             )}
           </div>
 
-          {/* Right — Controls: below preview on mobile, sticky col-span-5 on desktop */}
-          <div className="w-full px-4 pb-6 overflow-y-auto lg:col-span-5 lg:sticky lg:top-6 lg:bg-white lg:p-4 lg:border lg:rounded-lg lg:shadow-sm lg:px-4 lg:pb-4">
+          {/* ===== RIGHT: Control Panel ===== */}
+          <div className="w-full px-4 pb-6 overflow-y-auto lg:col-span-5 lg:sticky lg:top-6 lg:bg-white lg:p-4 lg:border lg:rounded-lg lg:shadow-sm">
             {/* Photo strip */}
             <div className="space-y-2">
-              <Label>Foto ({images.length}/{maxPhotos})</Label>
+              <Label>
+                Foto ({images.length}/{maxPhotos})
+              </Label>
               <div className="grid grid-cols-3 gap-2">
                 {images.map((item) => (
                   <div
@@ -438,8 +540,8 @@ export function CollageCard() {
               />
             </div>
 
-            {/* Layout picker — visual buttons */}
-            <div className="space-y-2">
+            {/* Layout picker */}
+            <div className="mt-5 space-y-2">
               <Label>Layout</Label>
               <div className="flex flex-wrap gap-2">
                 {LAYOUTS.map((l) => (
@@ -475,7 +577,7 @@ export function CollageCard() {
             </div>
 
             {/* Orientation picker */}
-            <div className="space-y-2">
+            <div className="mt-5 space-y-2">
               <Label>Orientasi kertas</Label>
               <div className="flex gap-2">
                 <button
@@ -502,7 +604,7 @@ export function CollageCard() {
             </div>
 
             {/* Shape picker */}
-            <div className="space-y-2">
+            <div className="mt-5 space-y-2">
               <Label>Bentuk foto</Label>
               <div className="grid grid-cols-4 gap-2">
                 {SHAPES.map((s) => (
@@ -523,7 +625,7 @@ export function CollageCard() {
             </div>
 
             {/* Background color */}
-            <div className="space-y-2">
+            <div className="mt-5 space-y-2">
               <Label>Warna latar</Label>
               <div className="flex flex-wrap gap-2">
                 {BG_COLORS.map((c) => (
@@ -547,10 +649,12 @@ export function CollageCard() {
             </div>
 
             {/* Spacing slider */}
-            <div className="space-y-2">
+            <div className="mt-5 space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Jarak antar foto</Label>
-                <span className="text-xs font-bold text-muted-foreground">{spacing}px</span>
+                <span className="text-xs font-bold text-muted-foreground">
+                  {spacing}px
+                </span>
               </div>
               <Slider
                 min={0}
@@ -562,7 +666,7 @@ export function CollageCard() {
             </div>
 
             {/* Text overlay */}
-            <div className="space-y-2">
+            <div className="mt-5 space-y-2">
               <Label>Teks pada kolase</Label>
               <div className="space-y-2">
                 {texts.map((t) => (
@@ -572,7 +676,9 @@ export function CollageCard() {
                         type="text"
                         placeholder="Tulis teks..."
                         value={t.text}
-                        onChange={(e) => updateText(t.id, "text", e.target.value)}
+                        onChange={(e) =>
+                          updateText(t.id, "text", e.target.value)
+                        }
                         className="h-8 text-xs"
                       />
                       <button
@@ -589,12 +695,16 @@ export function CollageCard() {
                         min={10}
                         max={60}
                         value={t.size}
-                        onChange={(e) => updateText(t.id, "size", Number(e.target.value))}
+                        onChange={(e) =>
+                          updateText(t.id, "size", Number(e.target.value))
+                        }
                         className="h-8 w-16 text-xs"
                       />
                       <select
                         value={t.position}
-                        onChange={(e) => updateText(t.id, "position", e.target.value)}
+                        onChange={(e) =>
+                          updateText(t.id, "position", e.target.value)
+                        }
                         className="h-8 flex-1 rounded-md border bg-card px-1 text-xs"
                       >
                         <option value="atas">Atas</option>
@@ -620,15 +730,31 @@ export function CollageCard() {
 }
 
 function ShapeIcon({ id, active }: { id: ShapeId; active: boolean }) {
-  const color = active ? "hsl(var(--primary))" : "hsl(var(--muted-foreground) / 0.5)";
-  const fill = active ? "hsl(var(--primary) / 0.15)" : "hsl(var(--muted) / 0.3)";
+  const color = active
+    ? "hsl(var(--primary))"
+    : "hsl(var(--muted-foreground) / 0.5)";
+  const fill = active
+    ? "hsl(var(--primary) / 0.15)"
+    : "hsl(var(--muted) / 0.3)";
   return (
-    <svg viewBox="0 0 24 24" className="size-5" fill={fill} stroke={color} strokeWidth={1.8}>
+    <svg
+      viewBox="0 0 24 24"
+      className="size-5"
+      fill={fill}
+      stroke={color}
+      strokeWidth={1.8}
+    >
       {id === "square" && <rect x="3" y="3" width="18" height="18" rx="2" />}
       {id === "circle" && <circle cx="12" cy="12" r="9" />}
-      {id === "triangle" && <path d="M12 3 3 21h18z" strokeLinejoin="round" />}
-      {id === "diamond" && <path d="M12 2 22 12 12 22 2 12z" strokeLinejoin="round" />}
-      {id === "hexagon" && <path d="M8 3h8l5 9-5 9H8l-5-9z" strokeLinejoin="round" />}
+      {id === "triangle" && (
+        <path d="M12 3 3 21h18z" strokeLinejoin="round" />
+      )}
+      {id === "diamond" && (
+        <path d="M12 2 22 12 12 22 2 12z" strokeLinejoin="round" />
+      )}
+      {id === "hexagon" && (
+        <path d="M8 3h8l5 9-5 9H8l-5-9z" strokeLinejoin="round" />
+      )}
       {id === "star" && (
         <path
           d="m12 2 2.9 6 6.6.9-4.8 4.6 1.1 6.5L12 17l-5.8 3 1.1-6.5-4.8-4.6 6.6-.9z"
