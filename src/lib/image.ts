@@ -237,11 +237,27 @@ function sharpenImageData(data: ImageData, w: number, h: number, amount: number)
   }
 }
 
+let _webpSupported: boolean | null = null;
+
+export function isWebpSupported(): boolean {
+  if (_webpSupported !== null) return _webpSupported;
+  try {
+    const c = document.createElement("canvas");
+    c.width = 1;
+    c.height = 1;
+    _webpSupported = c.toDataURL("image/webp").startsWith("data:image/webp");
+  } catch {
+    _webpSupported = false;
+  }
+  return _webpSupported;
+}
+
 export function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality = 0.92) {
   return new Promise<Blob>((resolve, reject) => {
+    const safeType = type === "image/webp" && !isWebpSupported() ? "image/jpeg" : type;
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("Gagal membuat file gambar."))),
-      type,
+      safeType,
       quality,
     );
   });

@@ -310,13 +310,23 @@
 .tool-tabs {
   display: flex;
   gap: 4px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
   background: var(--paper-dim, var(--muted));
   padding: 5px;
   border-radius: 12px;
   margin-bottom: 22px;
   width: fit-content;
   max-width: 100%;
+}
+.tool-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+.tool-tabs::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
 }
 .tool-tabs button {
   border: none;
@@ -745,6 +755,7 @@
 /* Compress bottom bar */
 .compress-bottombar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding-top: 18px;

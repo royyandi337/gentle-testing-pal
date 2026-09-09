@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { canvasToBlob, downloadBlob, fileToDataUrl, loadImage } from "@/lib/image";
+import { canvasToBlob, downloadBlob, loadImage } from "@/lib/image";
 import { saveResult } from "@/lib/history";
 
 const FRAME_STYLES = [
@@ -39,6 +39,8 @@ export function PolaroidCard() {
 
   const style = FRAME_STYLES.find((s) => s.value === frameStyle) ?? FRAME_STYLES[0]!;
 
+  const MAX_FILE_SIZE = 20 * 1024 * 1024;
+
   const handleFiles = useCallback(async (files: File[]) => {
     const valid = files.filter((f) => f.type.startsWith("image/"));
     if (!valid.length) {
@@ -46,18 +48,25 @@ export function PolaroidCard() {
       setMessage("Pilih berkas gambar (JPG, PNG, atau WEBP).");
       return;
     }
+    const tooLarge = valid.filter((f) => f.size > MAX_FILE_SIZE);
+    const ok = valid.filter((f) => f.size <= MAX_FILE_SIZE);
     setPhase("working");
     setMessage("Memuat gambar...");
     try {
       const loaded: LoadedImage[] = [];
-      for (const file of valid) {
+      for (const file of ok) {
         const url = URL.createObjectURL(file);
         const img = await loadImage(url);
         loaded.push({ id: `${file.name}-${Date.now()}-${Math.random()}`, name: file.name, url, img });
       }
       setImages((prev) => [...prev, ...loaded]);
-      setPhase("done");
-      setMessage(`${loaded.length} foto ditambahkan.`);
+      if (tooLarge.length) {
+        setPhase("error");
+        setMessage(`${tooLarge.length} file dilewati karena melebihi batas 20MB.`);
+      } else {
+        setPhase("done");
+        setMessage(`${loaded.length} foto ditambahkan.`);
+      }
     } catch (error) {
       setPhase("error");
       setMessage(error instanceof Error ? error.message : "Gagal memuat gambar.");
@@ -65,12 +74,20 @@ export function PolaroidCard() {
   }, []);
 
   function removeImage(id: string) {
-    setImages((prev) => prev.filter((item) => item.id !== id));
+    setImages((prev) => {
+      const target = prev.find((i) => i.id === id);
+      if (target) URL.revokeObjectURL(target.url);
+      return prev.filter((item) => item.id !== id);
+    });
   }
   function clearAll() {
-    setImages([]);
+    setImages((prev) => {
+      prev.forEach((item) => URL.revokeObjectURL(item.url));
+      return [];
+    });
     setPhase("idle");
     setMessage(undefined);
+    previewRefs.current = [];
   }
 
   const renderPolaroid = useCallback(
@@ -83,6 +100,10 @@ export function PolaroidCard() {
       ctx.fillStyle = style.frameColor;
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
+      ctx.strokeStyle = style.frameColor === "#ffffff" ? "#e0e0e0" : "rgba(0,0,0,0.15)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(FRAME_BORDER, FRAME_BORDER, PHOTO_W, PHOTO_H);
+
       if (style.sepia > 0) ctx.filter = `sepia(${style.sepia})`;
 
       const scale = Math.max(PHOTO_W / item.img.naturalWidth, PHOTO_H / item.img.naturalHeight);
@@ -92,10 +113,6 @@ export function PolaroidCard() {
       const photoY = FRAME_BORDER + (PHOTO_H - h) / 2;
       ctx.drawImage(item.img, photoX, photoY, w, h);
       ctx.filter = "none";
-
-      ctx.strokeStyle = style.frameColor === "#ffffff" ? "#e0e0e0" : "rgba(0,0,0,0.15)";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(FRAME_BORDER, FRAME_BORDER, PHOTO_W, PHOTO_H);
 
       if (caption) {
         ctx.fillStyle = style.frameColor === "#2a2a2a" ? "#e0e0e0" : "#333333";
@@ -112,6 +129,7 @@ export function PolaroidCard() {
   );
 
   useEffect(() => {
+    previewRefs.current = previewRefs.current.slice(0, images.length);
     images.forEach((item, i) => {
       const preview = previewRefs.current[i];
       if (!preview) return;

@@ -51,24 +51,30 @@ const CROP_MARK_GAP = 4;
 
 type Cropped = { name: string; dataUrl: string; width: number; height: number };
 
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+
 async function autoCrop(file: File): Promise<Cropped> {
   const img = await loadImage(await fileToDataUrl(file));
   const w = img.naturalWidth;
   const h = img.naturalHeight;
   const probe = document.createElement("canvas");
-  probe.width = w;
-  probe.height = h;
+  const maxProbeDim = 800;
+  const probeScale = Math.min(1, maxProbeDim / Math.max(w, h));
+  probe.width = Math.max(1, Math.round(w * probeScale));
+  probe.height = Math.max(1, Math.round(h * probeScale));
   const pctx = probe.getContext("2d", { willReadFrequently: true })!;
-  pctx.drawImage(img, 0, 0);
-  const { data } = pctx.getImageData(0, 0, w, h);
+  pctx.drawImage(img, 0, 0, probe.width, probe.height);
+  const pw = probe.width;
+  const ph = probe.height;
+  const { data } = pctx.getImageData(0, 0, pw, ph);
 
-  const step = Math.max(1, Math.floor(w / 200));
+  const step = Math.max(1, Math.floor(pw / 200));
   const lightRatio: number[] = [];
-  for (let y = 0; y < h; y += 1) {
+  for (let y = 0; y < ph; y += 1) {
     let light = 0;
     let total = 0;
-    for (let x = 0; x < w; x += step) {
-      const i = (y * w + x) * 4;
+    for (let x = 0; x < pw; x += step) {
+      const i = (y * pw + x) * 4;
       const lum = 0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]!;
       if (lum > 170) light += 1;
       total += 1;
@@ -78,23 +84,25 @@ async function autoCrop(file: File): Promise<Cropped> {
 
   const isContent = (y: number) => (lightRatio[y] ?? 0) >= 0.6;
   let top = 0;
-  while (top < h - 1 && !isContent(top)) top += 1;
-  let bottom = h - 1;
+  while (top < ph - 1 && !isContent(top)) top += 1;
+  let bottom = ph - 1;
   while (bottom > top + 1 && !isContent(bottom)) bottom -= 1;
 
-  if (bottom - top < h * 0.6) {
+  if (bottom - top < ph * 0.6) {
     top = 0;
-    bottom = h - 1;
+    bottom = ph - 1;
   }
 
-  const ch = bottom - top + 1;
+  const cropTop = Math.round((top / probeScale));
+  const cropBottom = Math.round((bottom / probeScale));
+  const ch = cropBottom - cropTop + 1;
   const out = document.createElement("canvas");
   out.width = w;
   out.height = ch;
   const ctx = out.getContext("2d")!;
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, w, ch);
-  ctx.drawImage(img, 0, top, w, ch, 0, 0, w, ch);
+  ctx.drawImage(img, 0, cropTop, w, ch, 0, 0, w, ch);
   return {
     name: file.name.replace(/\.[^.]+$/, ""),
     dataUrl: out.toDataURL("image/jpeg", 0.92),
@@ -245,7 +253,7 @@ export function LabelPrintCard() {
       if (cancelled || !host) return;
       host.replaceChildren();
       for (const canvas of pages) {
-        canvas.style.maxHeight = `${460 * zoom}px`;
+        canvas.style.maxHeight = `${Math.min(460, window.innerHeight * 0.5) * zoom}px`;
         canvas.style.width = "auto";
         canvas.style.maxWidth = "100%";
         canvas.className = "rounded-xl border shadow-sm bg-white";
@@ -263,11 +271,18 @@ export function LabelPrintCard() {
       setMessage("Pilih berkas gambar (JPG, PNG, atau WEBP).");
       return;
     }
+    const tooLarge = images.filter((f) => f.size > MAX_FILE_SIZE);
+    const ok = images.filter((f) => f.size <= MAX_FILE_SIZE);
+    if (!ok.length) {
+      setPhase("error");
+      setMessage(`Semua file melebihi batas ${MAX_FILE_SIZE / 1024 / 1024}MB.`);
+      return;
+    }
     setPhase("working");
     setMessage("Memotong otomatis area resi...");
     try {
       const cropped: Cropped[] = [];
-      for (const file of images) cropped.push(await autoCrop(file));
+      for (const file of ok) cropped.push(await autoCrop(file));
       setItems((prev) => [...prev, ...cropped]);
       setPhase("done");
       setMessage(`${cropped.length} gambar dipotong otomatis.`);

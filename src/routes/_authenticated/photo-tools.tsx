@@ -54,6 +54,8 @@ const MIME: Record<string, string> = {
   webp: "image/webp",
 };
 
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+
 type BatchItem = {
   id: string;
   file: File;
@@ -140,7 +142,7 @@ function BatchGrid({
           <p className="cc-name">{item.file.name}</p>
           <p className="cc-orig">{formatSize(item.file.size)}</p>
           <div className="cc-thumb">
-            <img src={item.url} alt={item.file.name} />
+            <img src={item.url} alt={item.file.name} loading="lazy" />
           </div>
           <p className={item.done ? "cc-newsize" : "cc-newsize pending"}>{item.resultLabel}</p>
           <button className="cc-dl" disabled={!item.done} onClick={() => onDownload(item)}>
@@ -149,6 +151,18 @@ function BatchGrid({
         </div>
       ))}
     </div>
+  );
+}
+
+/* ===== Batch summary ===== */
+
+function BatchSummary({ items }: { items: BatchItem[] }) {
+  if (!items.length) return null;
+  const totalSize = items.reduce((sum, i) => sum + i.file.size, 0);
+  return (
+    <p className="text-xs text-muted-foreground">
+      {items.length} foto · Total {formatSize(totalSize)}
+    </p>
   );
 }
 
@@ -202,12 +216,15 @@ function useBatchTool() {
   const [items, setItems] = useState<BatchItem[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | undefined>(undefined);
+  const [progress, setProgress] = useState<number | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addFiles = useCallback((files: File[]) => {
     const valid = files.filter((f) => f.type.startsWith("image/"));
     if (!valid.length) return;
-    const newItems: BatchItem[] = valid.map((f) => ({
+    const tooLarge = valid.filter((f) => f.size > MAX_FILE_SIZE);
+    const ok = valid.filter((f) => f.size <= MAX_FILE_SIZE);
+    const newItems: BatchItem[] = ok.map((f) => ({
       id: `${f.name}-${Date.now()}-${Math.random()}`,
       file: f,
       url: URL.createObjectURL(f),
@@ -215,16 +232,30 @@ function useBatchTool() {
       resultLabel: "Belum diproses",
     }));
     setItems((prev) => [...prev, ...newItems]);
+    if (tooLarge.length) {
+      setPhase("error");
+      setMessage(
+        `${tooLarge.length} file dilewati karena melebihi batas ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
+      );
+    }
   }, []);
 
   const removeItem = useCallback((id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+    setItems((prev) => {
+      const target = prev.find((i) => i.id === id);
+      if (target) URL.revokeObjectURL(target.url);
+      return prev.filter((item) => item.id !== id);
+    });
   }, []);
 
   const clearAll = useCallback(() => {
-    setItems([]);
+    setItems((prev) => {
+      prev.forEach((item) => URL.revokeObjectURL(item.url));
+      return [];
+    });
     setPhase("idle");
     setMessage(undefined);
+    setProgress(undefined);
   }, []);
 
   return {
@@ -234,6 +265,8 @@ function useBatchTool() {
     setPhase,
     message,
     setMessage,
+    progress,
+    setProgress,
     fileInputRef,
     addFiles,
     removeItem,
@@ -276,12 +309,18 @@ function ResizePanel() {
 
   async function processAll() {
     if (!tool.items.length) return;
+    if (mode === "pixel" && width < 1) {
+      tool.setPhase("error");
+      tool.setMessage("Lebar minimal 1 piksel.");
+      return;
+    }
     tool.setPhase("working");
+    tool.setProgress(0);
     tool.setMessage(`Memproses ${tool.items.length} foto...`);
     try {
-      let done = 0;
       const updated: BatchItem[] = [];
-      for (const item of tool.items) {
+      for (let idx = 0; idx < tool.items.length; idx++) {
+        const item = tool.items[idx]!;
         const img = await loadImage(item.url);
         let targetW = img.naturalWidth;
         let targetH = img.naturalHeight;
@@ -314,14 +353,16 @@ function ResizePanel() {
         } catch {
           /* Riwayat opsional */
         }
-        done += 1;
-        tool.setMessage(`Memproses ${done}/${tool.items.length} foto...`);
+        tool.setProgress(Math.round(((idx + 1) / tool.items.length) * 100));
+        tool.setMessage(`Memproses ${idx + 1}/${tool.items.length} foto...`);
       }
       tool.setItems(updated);
       tool.setPhase("done");
-      tool.setMessage(`${tool.items.length} foto selesai di-resize.`);
+      tool.setProgress(undefined);
+      tool.setMessage(`${tool.items.length} foto selesai di-resize. Klik "Unduh" di tiap kartu untuk menyimpan.`);
     } catch (error) {
       tool.setPhase("error");
+      tool.setProgress(undefined);
       tool.setMessage(error instanceof Error ? error.message : "Proses resize gagal.");
     }
   }
@@ -382,6 +423,7 @@ function ResizePanel() {
                 min={1}
                 value={width}
                 onChange={(e) => setWidth(Number(e.target.value))}
+                className={width < 1 ? "border-destructive" : ""}
               />
             </div>
             <div className="flex-1 space-y-1.5">
@@ -402,22 +444,23 @@ function ResizePanel() {
           accept="image/jpeg,image/png,image/webp"
           multiple
           onFiles={tool.addFiles}
-          hint="Tarik & lepas file di sini — bisa banyak foto sekaligus"
+          hint="Tarik & lepas file di sini — bisa banyak foto sekaligus (maks 20MB per file)"
         />
       ) : (
         <>
+          <BatchSummary items={tool.items} />
           <BatchGrid items={tool.items} onRemove={tool.removeItem} onDownload={downloadItem} />
           <BatchBottomBar
             onAdd={() => tool.fileInputRef.current?.click()}
             onClear={tool.clearAll}
             onProcess={processAll}
-            processLabel="Unduh Semua"
+            processLabel="Proses Semua"
             disabled={tool.phase === "working"}
           />
         </>
       )}
       <HiddenInput inputRef={tool.fileInputRef} onFiles={tool.addFiles} />
-      <ProcessState phase={tool.phase} message={tool.message} />
+      <ProcessState phase={tool.phase} message={tool.message} progress={tool.progress} />
     </div>
   );
 }
@@ -431,11 +474,12 @@ function CompressPanel() {
   async function processAll() {
     if (!tool.items.length) return;
     tool.setPhase("working");
+    tool.setProgress(0);
     tool.setMessage(`Memproses ${tool.items.length} foto...`);
     try {
-      let done = 0;
       const updated: BatchItem[] = [];
-      for (const item of tool.items) {
+      for (let idx = 0; idx < tool.items.length; idx++) {
+        const item = tool.items[idx]!;
         const img = await loadImage(item.url);
         const canvas = document.createElement("canvas");
         canvas.width = img.naturalWidth;
@@ -456,14 +500,16 @@ function CompressPanel() {
         } catch {
           /* Riwayat opsional */
         }
-        done += 1;
-        tool.setMessage(`Memproses ${done}/${tool.items.length} foto...`);
+        tool.setProgress(Math.round(((idx + 1) / tool.items.length) * 100));
+        tool.setMessage(`Memproses ${idx + 1}/${tool.items.length} foto...`);
       }
       tool.setItems(updated);
       tool.setPhase("done");
-      tool.setMessage(`${tool.items.length} foto selesai dikompres.`);
+      tool.setProgress(undefined);
+      tool.setMessage(`${tool.items.length} foto selesai dikompres. Klik "Unduh" di tiap kartu untuk menyimpan.`);
     } catch (error) {
       tool.setPhase("error");
+      tool.setProgress(undefined);
       tool.setMessage(error instanceof Error ? error.message : "Proses kompres gagal.");
     }
   }
@@ -504,22 +550,23 @@ function CompressPanel() {
           accept="image/jpeg,image/png,image/webp"
           multiple
           onFiles={tool.addFiles}
-          hint="Tarik & lepas foto di sini — JPG, PNG, WEBP, bisa banyak sekaligus"
+          hint="Tarik & lepas foto di sini — JPG, PNG, WEBP, bisa banyak sekaligus (maks 20MB per file)"
         />
       ) : (
         <>
+          <BatchSummary items={tool.items} />
           <BatchGrid items={tool.items} onRemove={tool.removeItem} onDownload={downloadItem} />
           <BatchBottomBar
             onAdd={() => tool.fileInputRef.current?.click()}
             onClear={tool.clearAll}
             onProcess={processAll}
-            processLabel="Unduh Semua"
+            processLabel="Proses Semua"
             disabled={tool.phase === "working"}
           />
         </>
       )}
       <HiddenInput inputRef={tool.fileInputRef} onFiles={tool.addFiles} />
-      <ProcessState phase={tool.phase} message={tool.message} />
+      <ProcessState phase={tool.phase} message={tool.message} progress={tool.progress} />
     </div>
   );
 }
@@ -533,11 +580,12 @@ function ConvertPanel() {
   async function processAll() {
     if (!tool.items.length) return;
     tool.setPhase("working");
+    tool.setProgress(0);
     tool.setMessage(`Memproses ${tool.items.length} foto...`);
     try {
-      let done = 0;
       const updated: BatchItem[] = [];
-      for (const item of tool.items) {
+      for (let idx = 0; idx < tool.items.length; idx++) {
+        const item = tool.items[idx]!;
         const img = await loadImage(item.url);
         const canvas = document.createElement("canvas");
         canvas.width = img.naturalWidth;
@@ -558,14 +606,16 @@ function ConvertPanel() {
         } catch {
           /* Riwayat opsional */
         }
-        done += 1;
-        tool.setMessage(`Memproses ${done}/${tool.items.length} foto...`);
+        tool.setProgress(Math.round(((idx + 1) / tool.items.length) * 100));
+        tool.setMessage(`Memproses ${idx + 1}/${tool.items.length} foto...`);
       }
       tool.setItems(updated);
       tool.setPhase("done");
-      tool.setMessage(`${tool.items.length} foto selesai dikonversi.`);
+      tool.setProgress(undefined);
+      tool.setMessage(`${tool.items.length} foto selesai dikonversi. Klik "Unduh" di tiap kartu untuk menyimpan.`);
     } catch (error) {
       tool.setPhase("error");
+      tool.setProgress(undefined);
       tool.setMessage(error instanceof Error ? error.message : "Proses konversi gagal.");
     }
   }
@@ -606,47 +656,60 @@ function ConvertPanel() {
           accept="image/jpeg,image/png,image/webp"
           multiple
           onFiles={tool.addFiles}
-          hint="Tarik & lepas file di sini — bisa banyak foto sekaligus"
+          hint="Tarik & lepas file di sini — bisa banyak foto sekaligus (maks 20MB per file)"
         />
       ) : (
         <>
+          <BatchSummary items={tool.items} />
           <BatchGrid items={tool.items} onRemove={tool.removeItem} onDownload={downloadItem} />
           <BatchBottomBar
             onAdd={() => tool.fileInputRef.current?.click()}
             onClear={tool.clearAll}
             onProcess={processAll}
-            processLabel="Unduh Semua"
+            processLabel="Proses Semua"
             disabled={tool.phase === "working"}
           />
         </>
       )}
       <HiddenInput inputRef={tool.fileInputRef} onFiles={tool.addFiles} />
-      <ProcessState phase={tool.phase} message={tool.message} />
+      <ProcessState phase={tool.phase} message={tool.message} progress={tool.progress} />
     </div>
   );
 }
 
 /* ===== Rotate Panel ===== */
 
+type RotateItem = { id: string; file: File; url: string; angle: number; blob?: Blob };
+
 function RotatePanel() {
-  const [items, setItems] = useState<{ id: string; file: File; url: string; angle: number }[]>([]);
+  const [items, setItems] = useState<RotateItem[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | undefined>(undefined);
+  const [progress, setProgress] = useState<number | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function addFiles(files: File[]) {
-    const newItems = files
-      .filter((f) => f.type.startsWith("image/"))
-      .map((f) => ({
-        id: `${f.name}-${Date.now()}-${Math.random()}`,
-        file: f,
-        url: URL.createObjectURL(f),
-        angle: 0,
-      }));
+    const valid = files.filter((f) => f.type.startsWith("image/"));
+    const tooLarge = valid.filter((f) => f.size > MAX_FILE_SIZE);
+    const ok = valid.filter((f) => f.size <= MAX_FILE_SIZE);
+    const newItems = ok.map((f) => ({
+      id: `${f.name}-${Date.now()}-${Math.random()}`,
+      file: f,
+      url: URL.createObjectURL(f),
+      angle: 0,
+    }));
     setItems((prev) => [...prev, ...newItems]);
+    if (tooLarge.length) {
+      setPhase("error");
+      setMessage(`${tooLarge.length} file dilewati karena melebihi batas ${MAX_FILE_SIZE / 1024 / 1024}MB.`);
+    }
   }
   function removeItem(id: string) {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+    setItems((prev) => {
+      const target = prev.find((i) => i.id === id);
+      if (target) URL.revokeObjectURL(target.url);
+      return prev.filter((item) => item.id !== id);
+    });
   }
   function rotateItem(id: string, delta: number) {
     setItems((prev) =>
@@ -657,18 +720,24 @@ function RotatePanel() {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, angle: 0 } : item)));
   }
   function clearAll() {
-    setItems([]);
+    setItems((prev) => {
+      prev.forEach((item) => URL.revokeObjectURL(item.url));
+      return [];
+    });
     setPhase("idle");
     setMessage(undefined);
+    setProgress(undefined);
   }
 
   async function applyAll() {
     if (!items.length) return;
     setPhase("working");
+    setProgress(0);
     setMessage(`Memproses ${items.length} foto...`);
     try {
-      let done = 0;
-      for (const item of items) {
+      const processed: RotateItem[] = [];
+      for (let idx = 0; idx < items.length; idx++) {
+        const item = items[idx]!;
         const img = await loadImage(item.url);
         const rotate = ((item.angle % 360) + 360) % 360;
         const swap = rotate === 90 || rotate === 270;
@@ -689,19 +758,27 @@ function RotatePanel() {
         const blob = await canvasToBlob(canvas, type, 0.92);
         const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg";
         const fileName = `${item.file.name.replace(/\.[^.]+$/, "")}-rotated.${ext}`;
-        downloadBlob(blob, fileName);
         try {
           await saveResult({ category: "photo", tool: "rotate", fileName, blob });
         } catch {
           /* Riwayat opsional */
         }
-        done += 1;
-        setMessage(`Memproses ${done}/${items.length} foto...`);
+        processed.push({ ...item, blob });
+        if (idx === 0) {
+          downloadBlob(blob, fileName);
+        } else {
+          setTimeout(() => downloadBlob(blob, fileName), idx * 300);
+        }
+        setProgress(Math.round(((idx + 1) / items.length) * 100));
+        setMessage(`Memproses ${idx + 1}/${items.length} foto...`);
       }
+      setItems(processed);
       setPhase("done");
+      setProgress(undefined);
       setMessage(`${items.length} foto selesai diputar dan diunduh.`);
     } catch (error) {
       setPhase("error");
+      setProgress(undefined);
       setMessage(error instanceof Error ? error.message : "Proses rotasi gagal.");
     }
   }
@@ -719,10 +796,13 @@ function RotatePanel() {
           accept="image/jpeg,image/png,image/webp"
           multiple
           onFiles={addFiles}
-          hint="Tarik & lepas file di sini — bisa banyak foto sekaligus"
+          hint="Tarik & lepas file di sini — bisa banyak foto sekaligus (maks 20MB per file)"
         />
       ) : (
         <>
+          <p className="text-xs text-muted-foreground">
+            {items.length} foto · Total {formatSize(items.reduce((s, i) => s + i.file.size, 0))}
+          </p>
           <div className="rotate-grid">
             {items.map((item) => (
               <div key={item.id} className="rotate-card-mockup">
@@ -738,10 +818,11 @@ function RotatePanel() {
                   <img
                     src={item.url}
                     alt={item.file.name}
+                    loading="lazy"
                     style={{ transform: `rotate(${item.angle}deg)` }}
                   />
                 </div>
-                <p className="rotate-angle">{((item.angle % 360) + 360) % 360}°</p>
+                <p className="rotate-angle">{item.angle}°</p>
                 <div className="rotate-actions">
                   <button aria-label="Putar kiri" onClick={() => rotateItem(item.id, -90)}>
                     <RotateCcw />
@@ -784,7 +865,7 @@ function RotatePanel() {
         </>
       )}
       <HiddenInput inputRef={fileInputRef} onFiles={addFiles} />
-      <ProcessState phase={phase} message={message} />
+      <ProcessState phase={phase} message={message} progress={progress} />
     </div>
   );
 }

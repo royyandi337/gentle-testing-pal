@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { canvasToBlob, downloadBlob, fileToDataUrl, loadImage } from "@/lib/image";
+import { canvasToBlob, downloadBlob, loadImage } from "@/lib/image";
 import { saveResult } from "@/lib/history";
 
 type LayoutId = "2x2" | "1x2" | "2x1" | "2x3" | "3x3";
@@ -68,23 +68,31 @@ export function CollageCard() {
   const layoutDef = LAYOUTS.find((l) => l.id === layoutId) ?? LAYOUTS[0]!;
   const slots = layoutDef.slots;
   const maxPhotos = 9;
+  const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
   async function handleFiles(files: File[]) {
     const valid = files.filter((f) => f.type.startsWith("image/"));
     if (!valid.length) return;
+    const tooLarge = valid.filter((f) => f.size > MAX_FILE_SIZE);
+    const ok = valid.filter((f) => f.size <= MAX_FILE_SIZE);
     setPhase("working");
     setMessage("Memuat gambar...");
     try {
       const loaded: LoadedImage[] = [];
-      for (const file of valid) {
+      for (const file of ok) {
         if (images.length + loaded.length >= maxPhotos) break;
         const url = URL.createObjectURL(file);
         const img = await loadImage(url);
         loaded.push({ id: `${file.name}-${Date.now()}-${Math.random()}`, name: file.name, url, img });
       }
       setImages((prev) => [...prev, ...loaded]);
-      setPhase("done");
-      setMessage(`${loaded.length} gambar ditambahkan.`);
+      if (tooLarge.length) {
+        setPhase("error");
+        setMessage(`${tooLarge.length} file dilewati karena melebihi batas 20MB.`);
+      } else {
+        setPhase("done");
+        setMessage(`${loaded.length} gambar ditambahkan.`);
+      }
     } catch (error) {
       setPhase("error");
       setMessage(error instanceof Error ? error.message : "Gagal memuat gambar.");
@@ -92,7 +100,11 @@ export function CollageCard() {
   }
 
   function removeImage(id: string) {
-    setImages((prev) => prev.filter((item) => item.id !== id));
+    setImages((prev) => {
+      const target = prev.find((i) => i.id === id);
+      if (target) URL.revokeObjectURL(target.url);
+      return prev.filter((item) => item.id !== id);
+    });
   }
 
   const renderCollage = useCallback((): HTMLCanvasElement => {
@@ -397,38 +409,42 @@ export function CollageCard() {
               <Label>Teks pada kolase</Label>
               <div className="space-y-2">
                 {texts.map((t) => (
-                  <div key={t.id} className="grid grid-cols-[1fr_60px_80px_28px] items-center gap-1.5">
-                    <Input
-                      type="text"
-                      placeholder="Tulis teks..."
-                      value={t.text}
-                      onChange={(e) => updateText(t.id, "text", e.target.value)}
-                      className="h-8 text-xs"
-                    />
-                    <Input
-                      type="number"
-                      min={10}
-                      max={60}
-                      value={t.size}
-                      onChange={(e) => updateText(t.id, "size", Number(e.target.value))}
-                      className="h-8 text-xs"
-                    />
-                    <select
-                      value={t.position}
-                      onChange={(e) => updateText(t.id, "position", e.target.value)}
-                      className="h-8 rounded-md border bg-card px-1 text-xs"
-                    >
-                      <option value="atas">Atas</option>
-                      <option value="tengah">Tengah</option>
-                      <option value="bawah">Bawah</option>
-                    </select>
-                    <button
-                      className="flex size-7 items-center justify-center rounded-md border bg-card text-muted-foreground hover:text-foreground"
-                      onClick={() => removeText(t.id)}
-                      aria-label="Hapus teks"
-                    >
-                      <X className="size-3" />
-                    </button>
+                  <div key={t.id} className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        type="text"
+                        placeholder="Tulis teks..."
+                        value={t.text}
+                        onChange={(e) => updateText(t.id, "text", e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                      <button
+                        className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-card text-muted-foreground hover:text-foreground"
+                        onClick={() => removeText(t.id)}
+                        aria-label="Hapus teks"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        type="number"
+                        min={10}
+                        max={60}
+                        value={t.size}
+                        onChange={(e) => updateText(t.id, "size", Number(e.target.value))}
+                        className="h-8 w-16 text-xs"
+                      />
+                      <select
+                        value={t.position}
+                        onChange={(e) => updateText(t.id, "position", e.target.value)}
+                        className="h-8 flex-1 rounded-md border bg-card px-1 text-xs"
+                      >
+                        <option value="atas">Atas</option>
+                        <option value="tengah">Tengah</option>
+                        <option value="bawah">Bawah</option>
+                      </select>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -464,12 +480,15 @@ export function CollageCard() {
                 <p className="text-xs text-muted-foreground">
                   {filledSlots} dari {slots} slot terisi
                 </p>
-                <div className="flex w-full gap-2">
+                <div className="flex w-full flex-wrap gap-2">
+                  <Button size="sm" className="flex-1" disabled={phase === "working"} onClick={() => download("jpg")}>
+                    <Download className="size-4" /> Download JPG
+                  </Button>
                   <Button variant="outline" size="sm" disabled={phase === "working"} onClick={() => download("png")}>
                     <Download className="size-4" /> PNG
                   </Button>
-                  <Button size="sm" className="flex-1" disabled={phase === "working"} onClick={() => download("jpg")}>
-                    <Download className="size-4" /> Download JPG
+                  <Button variant="outline" size="sm" disabled={phase === "working"} onClick={() => download("pdf")}>
+                    <Download className="size-4" /> PDF
                   </Button>
                 </div>
               </>
