@@ -330,69 +330,67 @@ export function CollageCard() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col gap-4 lg:flex-row">
-          {/* Left — sticky preview (desktop), sticky-top (mobile) */}
-          <div className="sticky top-0 z-50 max-h-[40vh] overflow-y-auto bg-background/80 px-4 pb-3 pt-2 backdrop-blur-md lg:sticky lg:top-4 lg:z-auto lg:max-h-none lg:flex-1 lg:overflow-visible lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0 lg:backdrop-blur-none lg:h-[calc(100vh-2rem)]">
-            <div className="flex h-full flex-col items-center gap-3">
-              {!images.length ? (
-                <div className="w-full">
-                  <FileDropzone
-                    accept="image/*"
-                    multiple
-                    onFiles={handleFiles}
-                    hint="Pilih beberapa foto sekaligus"
+        <div className="flex flex-col gap-4 w-full lg:grid lg:grid-cols-12 lg:gap-6 lg:items-start">
+          {/* Left — Preview: sticky-top on mobile, col-span-7 on desktop */}
+          <div className="w-full max-h-[35vh] overflow-hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b p-2 lg:col-span-7 lg:sticky lg:top-6 lg:z-auto lg:max-h-none lg:overflow-visible lg:bg-transparent lg:backdrop-blur-none lg:border-0 lg:p-0">
+            {!images.length ? (
+              <div className="w-full">
+                <FileDropzone
+                  accept="image/*"
+                  multiple
+                  onFiles={handleFiles}
+                  hint="Pilih beberapa foto sekaligus"
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <div
+                  key={`preview-${orientation}`}
+                  className={`w-full overflow-hidden bg-gray-50 rounded-lg p-4 flex items-center justify-center ${
+                    isLandscape ? "aspect-[4/3]" : "aspect-[3/4]"
+                  }`}
+                >
+                  <canvas
+                    ref={previewRef}
+                    className="w-full h-auto max-h-[75vh] object-contain mx-auto"
                   />
                 </div>
-              ) : (
-                <>
-                  <div
-                    key={`preview-${orientation}`}
-                    className={`flex w-full items-center justify-center overflow-hidden rounded-xl border bg-muted/30 p-2 ${
-                      isLandscape ? "aspect-[4/3]" : "aspect-[3/4]"
-                    }`}
+                <p className="text-xs text-muted-foreground">
+                  {filledSlots} dari {slots} slot terisi · {orientation}
+                </p>
+                <div className="flex w-full flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    disabled={phase === "working"}
+                    onClick={() => download("jpg")}
                   >
-                    <canvas
-                      ref={previewRef}
-                      className="h-auto max-h-full w-auto max-w-full object-contain"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {filledSlots} dari {slots} slot terisi · {orientation}
-                  </p>
-                  <div className="flex w-full flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      disabled={phase === "working"}
-                      onClick={() => download("jpg")}
-                    >
-                      <Download className="size-4" /> Download JPG
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={phase === "working"}
-                      onClick={() => download("png")}
-                    >
-                      <Download className="size-4" /> PNG
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={phase === "working"}
-                      onClick={() => download("pdf")}
-                    >
-                      <Download className="size-4" /> PDF
-                    </Button>
-                  </div>
-                </>
-              )}
-              <ProcessState phase={phase} message={message} />
-            </div>
+                    <Download className="size-4" /> Download JPG
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={phase === "working"}
+                    onClick={() => download("png")}
+                  >
+                    <Download className="size-4" /> PNG
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={phase === "working"}
+                    onClick={() => download("pdf")}
+                  >
+                    <Download className="size-4" /> PDF
+                  </Button>
+                </div>
+                <ProcessState phase={phase} message={message} />
+              </div>
+            )}
           </div>
 
-          {/* Right — controls (scrollable on desktop, below preview on mobile) */}
-          <div className="space-y-5 lg:w-[340px] lg:flex-shrink-0 lg:overflow-y-auto lg:h-[calc(100vh-2rem)] lg:pr-1">
+          {/* Right — Controls: below preview on mobile, sticky col-span-5 on desktop */}
+          <div className="w-full px-4 pb-6 overflow-y-auto lg:col-span-5 lg:sticky lg:top-6 lg:bg-white lg:p-4 lg:border lg:rounded-lg lg:shadow-sm lg:px-4 lg:pb-4">
             {/* Photo strip */}
             <div className="space-y-2">
               <Label>Foto ({images.length}/{maxPhotos})</Label>
