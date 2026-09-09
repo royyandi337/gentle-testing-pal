@@ -82,6 +82,41 @@ export type Database = {
         }
         Relationships: []
       }
+      generated_letters: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          filled_data: Json
+          id: string
+          result_file_path: string | null
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          filled_data: Json
+          id?: string
+          result_file_path?: string | null
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          filled_data?: Json
+          id?: string
+          result_file_path?: string | null
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_letters_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       processed_files: {
         Row: {
           created_at: string
@@ -306,6 +341,98 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      template_fields: {
+        Row: {
+          auto_suggested_label: string | null
+          confirmed_by_admin: boolean
+          context_hint: string | null
+          created_at: string
+          field_type: string
+          id: string
+          is_required: boolean
+          label: string | null
+          label_source: string
+          location_ref: Json | null
+          location_type: string | null
+          position_order: number
+          template_id: string
+          token: string
+        }
+        Insert: {
+          auto_suggested_label?: string | null
+          confirmed_by_admin?: boolean
+          context_hint?: string | null
+          created_at?: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          label?: string | null
+          label_source?: string
+          location_ref?: Json | null
+          location_type?: string | null
+          position_order: number
+          template_id: string
+          token: string
+        }
+        Update: {
+          auto_suggested_label?: string | null
+          confirmed_by_admin?: boolean
+          context_hint?: string | null
+          created_at?: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          label?: string | null
+          label_source?: string
+          location_ref?: Json | null
+          location_type?: string | null
+          position_order?: number
+          template_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_fields_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          original_file_path: string
+          processed_file_path: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          original_file_path: string
+          processed_file_path?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          original_file_path?: string
+          processed_file_path?: string | null
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
