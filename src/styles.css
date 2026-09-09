@@ -915,7 +915,69 @@
   border-color: var(--border);
   color: var(--foreground);
 }
-.dark .tool-tabs {
+
+@media (max-width: 640px) {
+  .tool-tabs {
+    position: relative;
+    padding-right: 24px;
+    scrollbar-width: thin;
+  }
+
+  .tool-tabs::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 28px;
+    pointer-events: none;
+    content: "";
+    background: linear-gradient(90deg, transparent, var(--muted));
+  }
+
+  .batch-card-mockup .cc-remove,
+  .rotate-card-mockup .cc-remove {
+    width: 44px;
+    height: 44px;
+    top: 4px;
+    right: 4px;
+  }
+
+  .rotate-actions button {
+    min-height: 44px;
+  }
+
+  .choice-pill {
+    min-height: 44px;
+  }
+
+  .compress-bottombar .btn-action-mockup {
+    order: -1;
+    flex-basis: 100% !important;
+  }
+
+  .compress-bottombar .btn-secondary-line,
+  .compress-bottombar .icon-btn {
+    min-height: 44px;
+  }
+
+  .rotate-viewport,
+  .compress-grid,
+  .rotate-grid {
+    touch-action: pan-y;
+  }
+
+  .batch-card-mockup .cc-thumb,
+  .rotate-viewport {
+    contain: paint;
+  }
+}
+
+.rotate-viewport img {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.dark .tool-tabs { 
   background: var(--muted);
 }
 .dark .tool-tabs button.active {

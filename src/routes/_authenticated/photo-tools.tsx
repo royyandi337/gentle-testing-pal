@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { canvasToBlob, downloadBlob, loadImage } from "@/lib/image";
 import { saveResult } from "@/lib/history";
+import { downloadZip } from "@/lib/zip";
 
 export const Route = createFileRoute("/_authenticated/photo-tools")({
   head: () => ({
@@ -172,14 +173,20 @@ function BatchBottomBar({
   onAdd,
   onClear,
   onProcess,
+  onZip,
   processLabel,
+  zipLabel,
   disabled,
+  zipDisabled,
 }: {
   onAdd: () => void;
   onClear: () => void;
   onProcess: () => void;
+  onZip: () => void;
   processLabel: string;
+  zipLabel: string;
   disabled: boolean;
+  zipDisabled: boolean;
 }) {
   return (
     <div className="compress-bottombar">
@@ -205,6 +212,14 @@ function BatchBottomBar({
         style={{ flex: 1 }}
       >
         <Download className="size-4" /> {processLabel}
+      </button>
+      <button
+        className="btn-secondary-line"
+        disabled={zipDisabled}
+        onClick={onZip}
+        style={{ flex: "0 0 auto", padding: "11px 16px" }}
+      >
+        <FileArchive className="size-4" /> {zipLabel}
       </button>
     </div>
   );
@@ -258,6 +273,24 @@ function useBatchTool() {
     setProgress(undefined);
   }, []);
 
+  const downloadAllZip = useCallback(async (prefix: string) => {
+    const done = items.filter((i) => i.done && i.blob);
+    if (!done.length) return;
+    setPhase("working");
+    setMessage("Menyiapkan arsip ZIP...");
+    try {
+      await downloadZip(
+        done.map((i) => ({ name: i.file.name.replace(/\.[^.]+$/, "") + "-" + prefix + "." + (i.file.type === "image/png" ? "png" : "jpg"), blob: i.blob! })),
+        `photo-tools-${prefix}-${done.length}file.zip`,
+      );
+      setPhase("done");
+      setMessage(`${done.length} file dikemas ke ZIP.`);
+    } catch (error) {
+      setPhase("error");
+      setMessage(error instanceof Error ? error.message : "Gagal membuat ZIP.");
+    }
+  }, [items]);
+
   return {
     items,
     setItems,
@@ -271,6 +304,7 @@ function useBatchTool() {
     addFiles,
     removeItem,
     clearAll,
+    downloadAllZip,
   };
 }
 
@@ -355,11 +389,12 @@ function ResizePanel() {
         }
         tool.setProgress(Math.round(((idx + 1) / tool.items.length) * 100));
         tool.setMessage(`Memproses ${idx + 1}/${tool.items.length} foto...`);
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }
       tool.setItems(updated);
       tool.setPhase("done");
       tool.setProgress(undefined);
-      tool.setMessage(`${tool.items.length} foto selesai di-resize. Klik "Unduh" di tiap kartu untuk menyimpan.`);
+      tool.setMessage(`${updated.length} foto selesai di-resize. Klik "Unduh" di tiap kartu untuk menyimpan.`);
     } catch (error) {
       tool.setPhase("error");
       tool.setProgress(undefined);
@@ -441,7 +476,7 @@ function ResizePanel() {
 
       {!tool.items.length ? (
         <FileDropzone
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/*"
           multiple
           onFiles={tool.addFiles}
           hint="Tarik & lepas file di sini — bisa banyak foto sekaligus (maks 20MB per file)"
@@ -454,8 +489,11 @@ function ResizePanel() {
             onAdd={() => tool.fileInputRef.current?.click()}
             onClear={tool.clearAll}
             onProcess={processAll}
+            onZip={() => tool.downloadAllZip("resized")}
             processLabel="Proses Semua"
+            zipLabel="Download ZIP"
             disabled={tool.phase === "working"}
+            zipDisabled={!tool.items.some((i) => i.done) || tool.phase === "working"}
           />
         </>
       )}
@@ -502,11 +540,12 @@ function CompressPanel() {
         }
         tool.setProgress(Math.round(((idx + 1) / tool.items.length) * 100));
         tool.setMessage(`Memproses ${idx + 1}/${tool.items.length} foto...`);
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }
       tool.setItems(updated);
       tool.setPhase("done");
       tool.setProgress(undefined);
-      tool.setMessage(`${tool.items.length} foto selesai dikompres. Klik "Unduh" di tiap kartu untuk menyimpan.`);
+      tool.setMessage(`${updated.length} foto selesai dikompres. Klik "Unduh" di tiap kartu untuk menyimpan.`);
     } catch (error) {
       tool.setPhase("error");
       tool.setProgress(undefined);
@@ -547,7 +586,7 @@ function CompressPanel() {
 
       {!tool.items.length ? (
         <FileDropzone
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/*"
           multiple
           onFiles={tool.addFiles}
           hint="Tarik & lepas foto di sini — JPG, PNG, WEBP, bisa banyak sekaligus (maks 20MB per file)"
@@ -560,8 +599,11 @@ function CompressPanel() {
             onAdd={() => tool.fileInputRef.current?.click()}
             onClear={tool.clearAll}
             onProcess={processAll}
+            onZip={() => tool.downloadAllZip("compressed")}
             processLabel="Proses Semua"
+            zipLabel="Download ZIP"
             disabled={tool.phase === "working"}
+            zipDisabled={!tool.items.some((i) => i.done) || tool.phase === "working"}
           />
         </>
       )}
@@ -608,11 +650,12 @@ function ConvertPanel() {
         }
         tool.setProgress(Math.round(((idx + 1) / tool.items.length) * 100));
         tool.setMessage(`Memproses ${idx + 1}/${tool.items.length} foto...`);
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }
       tool.setItems(updated);
       tool.setPhase("done");
       tool.setProgress(undefined);
-      tool.setMessage(`${tool.items.length} foto selesai dikonversi. Klik "Unduh" di tiap kartu untuk menyimpan.`);
+      tool.setMessage(`${updated.length} foto selesai dikonversi. Klik "Unduh" di tiap kartu untuk menyimpan.`);
     } catch (error) {
       tool.setPhase("error");
       tool.setProgress(undefined);
@@ -653,7 +696,7 @@ function ConvertPanel() {
 
       {!tool.items.length ? (
         <FileDropzone
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/*"
           multiple
           onFiles={tool.addFiles}
           hint="Tarik & lepas file di sini — bisa banyak foto sekaligus (maks 20MB per file)"
@@ -666,8 +709,11 @@ function ConvertPanel() {
             onAdd={() => tool.fileInputRef.current?.click()}
             onClear={tool.clearAll}
             onProcess={processAll}
+            onZip={() => tool.downloadAllZip("converted")}
             processLabel="Proses Semua"
+            zipLabel="Download ZIP"
             disabled={tool.phase === "working"}
+            zipDisabled={!tool.items.some((i) => i.done) || tool.phase === "working"}
           />
         </>
       )}
@@ -729,6 +775,27 @@ function RotatePanel() {
     setProgress(undefined);
   }
 
+  async function downloadAllZipRotate() {
+    const done = items.filter((i) => i.blob);
+    if (!done.length) return;
+    setPhase("working");
+    setMessage("Menyiapkan arsip ZIP...");
+    try {
+      await downloadZip(
+        done.map((i) => {
+          const ext = i.file.type === "image/png" ? "png" : i.file.type === "image/webp" ? "webp" : "jpg";
+          return { name: `${i.file.name.replace(/\.[^.]+$/, "")}-rotated.${ext}`, blob: i.blob! };
+        }),
+        `photo-tools-rotated-${done.length}file.zip`,
+      );
+      setPhase("done");
+      setMessage(`${done.length} file dikemas ke ZIP.`);
+    } catch (error) {
+      setPhase("error");
+      setMessage(error instanceof Error ? error.message : "Gagal membuat ZIP.");
+    }
+  }
+
   async function applyAll() {
     if (!items.length) return;
     setPhase("working");
@@ -771,11 +838,12 @@ function RotatePanel() {
         }
         setProgress(Math.round(((idx + 1) / items.length) * 100));
         setMessage(`Memproses ${idx + 1}/${items.length} foto...`);
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }
       setItems(processed);
       setPhase("done");
       setProgress(undefined);
-      setMessage(`${items.length} foto selesai diputar dan diunduh.`);
+      setMessage(`${processed.length} foto selesai diputar dan diunduh.`);
     } catch (error) {
       setPhase("error");
       setProgress(undefined);
@@ -793,7 +861,7 @@ function RotatePanel() {
 
       {!items.length ? (
         <FileDropzone
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/*"
           multiple
           onFiles={addFiles}
           hint="Tarik & lepas file di sini — bisa banyak foto sekaligus (maks 20MB per file)"
@@ -860,6 +928,14 @@ function RotatePanel() {
               style={{ flex: 1 }}
             >
               <Download className="size-4" /> Terapkan & Unduh Semua
+            </button>
+            <button
+              className="btn-secondary-line"
+              disabled={!items.some((i) => i.blob) || phase === "working"}
+              onClick={downloadAllZipRotate}
+              style={{ flex: "0 0 auto", padding: "11px 16px" }}
+            >
+              <FileArchive className="size-4" /> Download ZIP
             </button>
           </div>
         </>

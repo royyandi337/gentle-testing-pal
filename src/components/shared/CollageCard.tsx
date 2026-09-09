@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X, Plus, Image as ImageIcon, Download } from "lucide-react";
+import { X, Plus, Download, RectangleHorizontal, RectangleVertical } from "lucide-react";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
 import { Button } from "@/components/ui/button";
@@ -43,21 +43,12 @@ const CANVAS_SIZE = 1200;
 type LoadedImage = { id: string; name: string; url: string; img: HTMLImageElement };
 type TextOverlay = { id: string; text: string; size: number; position: "atas" | "tengah" | "bawah" };
 
-const SHAPE_CLIP: Record<ShapeId, string> = {
-  square: "none",
-  circle: "circle(50% at 50% 50%)",
-  triangle: "polygon(50% 2%, 2% 98%, 98% 98%)",
-  diamond: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
-  hexagon: "polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0% 50%)",
-  star: "polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)",
-  heart: "url(#collage-heart-clip)",
-};
-
 export function CollageCard() {
   const [images, setImages] = useState<LoadedImage[]>([]);
   const [layoutId, setLayoutId] = useState<LayoutId>("2x2");
   const [shape, setShape] = useState<ShapeId>("square");
   const [bgColor, setBgColor] = useState("#FFFFFF");
+  const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
   const [spacing, setSpacing] = useState(10);
   const [texts, setTexts] = useState<TextOverlay[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -82,8 +73,12 @@ export function CollageCard() {
       for (const file of ok) {
         if (images.length + loaded.length >= maxPhotos) break;
         const url = URL.createObjectURL(file);
-        const img = await loadImage(url);
-        loaded.push({ id: `${file.name}-${Date.now()}-${Math.random()}`, name: file.name, url, img });
+        try {
+          const img = await loadImage(url);
+          loaded.push({ id: `${file.name}-${Date.now()}-${Math.random()}`, name: file.name, url, img });
+        } catch {
+          URL.revokeObjectURL(url);
+        }
       }
       setImages((prev) => [...prev, ...loaded]);
       if (tooLarge.length) {
@@ -109,8 +104,10 @@ export function CollageCard() {
 
   const renderCollage = useCallback((): HTMLCanvasElement => {
     const canvas = document.createElement("canvas");
-    canvas.width = CANVAS_SIZE;
-    canvas.height = Math.round(CANVAS_SIZE * (layoutDef.rows / layoutDef.cols));
+    const aspectRatio = layoutDef.rows / layoutDef.cols;
+    const isLandscape = orientation === "landscape";
+    canvas.width = isLandscape ? CANVAS_SIZE : Math.round(CANVAS_SIZE * aspectRatio);
+    canvas.height = isLandscape ? Math.round(CANVAS_SIZE * aspectRatio) : CANVAS_SIZE;
     const ctx = canvas.getContext("2d")!;
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -205,7 +202,7 @@ export function CollageCard() {
     }
 
     return canvas;
-  }, [images, layoutDef, slots, spacing, bgColor, shape, texts]);
+  }, [images, layoutDef, slots, spacing, bgColor, shape, texts, orientation]);
 
   useEffect(() => {
     if (!previewRef.current || !images.length) return;
@@ -282,13 +279,13 @@ export function CollageCard() {
               <div className="grid grid-cols-3 gap-2">
                 {images.map((item) => (
                   <div key={item.id} className="relative aspect-square overflow-hidden rounded-lg border bg-muted/30">
-                    <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+                    <img src={item.url} alt={item.name} loading="lazy" className="h-full w-full object-cover" />
                     <button
-                      className="absolute right-1 top-1 flex size-5 items-center justify-center rounded bg-black/75 text-white"
+                      className="absolute right-1 top-1 flex size-7 items-center justify-center rounded bg-black/75 text-white"
                       onClick={() => removeImage(item.id)}
                       aria-label="Hapus foto"
                     >
-                      <X className="size-2.5" />
+                      <X className="size-3.5" />
                     </button>
                   </div>
                 ))}
@@ -389,6 +386,33 @@ export function CollageCard() {
               </div>
             </div>
 
+            {/* Orientation picker */}
+            <div className="space-y-2">
+              <Label>Orientasi</Label>
+              <div className="flex gap-2">
+                <button
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                    orientation === "portrait"
+                      ? "border-primary bg-muted/40"
+                      : "border-border bg-card hover:border-foreground/30"
+                  }`}
+                  onClick={() => setOrientation("portrait")}
+                >
+                  <RectangleVertical className="size-4" /> Portrait
+                </button>
+                <button
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                    orientation === "landscape"
+                      ? "border-primary bg-muted/40"
+                      : "border-border bg-card hover:border-foreground/30"
+                  }`}
+                  onClick={() => setOrientation("landscape")}
+                >
+                  <RectangleHorizontal className="size-4" /> Landscape
+                </button>
+              </div>
+            </div>
+
             {/* Spacing slider */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -462,7 +486,7 @@ export function CollageCard() {
             {!images.length ? (
               <div className="w-full">
                 <FileDropzone
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/*"
                   multiple
                   onFiles={handleFiles}
                   hint="Pilih beberapa foto sekaligus"
@@ -474,7 +498,7 @@ export function CollageCard() {
                   <canvas
                     ref={previewRef}
                     className="h-auto w-full"
-                    style={{ maxHeight: "420px" }}
+                    style={{ maxHeight: "min(420px, 50vh)" }}
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X, Printer, FileText, Image as ImageIcon, ZoomIn, ZoomOut } from "lucide-react";
+import { X, Printer, FileText, Image as ImageIcon, ZoomIn, ZoomOut, FileArchive } from "lucide-react";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { canvasToBlob, downloadBlob, fileToDataUrl, loadImage } from "@/lib/image";
 import { saveResult } from "@/lib/history";
+import { downloadZip } from "@/lib/zip";
 
 type GridLayout = {
   type: "grid";
@@ -244,14 +245,16 @@ export function LabelPrintCard() {
   useEffect(() => {
     const host = sheetRef.current;
     if (!host || !items.length) {
+      if (host) host.replaceChildren();
       setSheetInfo(undefined);
       return;
     }
     let cancelled = false;
     (async () => {
-      const pages = await renderPages();
-      if (cancelled || !host) return;
-      host.replaceChildren();
+      try {
+        const pages = await renderPages();
+        if (cancelled || !host) return;
+        host.replaceChildren();
       for (const canvas of pages) {
         canvas.style.maxHeight = `${Math.min(460, window.innerHeight * 0.5) * zoom}px`;
         canvas.style.width = "auto";
@@ -259,7 +262,13 @@ export function LabelPrintCard() {
         canvas.className = "rounded-xl border shadow-sm bg-white";
         host.appendChild(canvas);
       }
-      setSheetInfo({ pages: pages.length, perPage });
+        setSheetInfo({ pages: pages.length, perPage });
+      } catch (error) {
+        if (!cancelled) {
+          setPhase("error");
+          setMessage(error instanceof Error ? error.message : "Gagal memperbarui pratinjau.");
+        }
+      }
     })();
     return () => { cancelled = true; };
   }, [renderPages, items.length, perPage, zoom]);
@@ -282,10 +291,22 @@ export function LabelPrintCard() {
     setMessage("Memotong otomatis area resi...");
     try {
       const cropped: Cropped[] = [];
-      for (const file of ok) cropped.push(await autoCrop(file));
+      let failed = 0;
+      for (const file of ok) {
+        try {
+          cropped.push(await autoCrop(file));
+        } catch {
+          failed += 1;
+        }
+      }
       setItems((prev) => [...prev, ...cropped]);
-      setPhase("done");
-      setMessage(`${cropped.length} gambar dipotong otomatis.`);
+      if (!cropped.length) {
+        setPhase("error");
+        setMessage("Tidak ada gambar yang berhasil diproses.");
+      } else {
+        setPhase(failed || tooLarge.length ? "error" : "done");
+        setMessage(`${cropped.length} gambar dipotong${failed ? `, ${failed} gagal` : ""}.`);
+      }
     } catch (error) {
       setPhase("error");
       setMessage(error instanceof Error ? error.message : "Gagal memotong gambar.");
@@ -332,13 +353,38 @@ export function LabelPrintCard() {
       const pages = await renderPages();
       for (let i = 0; i < pages.length; i += 1) {
         const blob = await canvasToBlob(pages[i]!, "image/jpeg", 0.92);
-        downloadBlob(blob, `label-resi-hal-${i + 1}.jpg`);
+        const fileName = `label-resi-hal-${i + 1}.jpg`;
+        if (i === 0) {
+          downloadBlob(blob, fileName);
+        } else {
+          setTimeout(() => downloadBlob(blob, fileName), i * 300);
+        }
       }
       setPhase("done");
       setMessage(`${pages.length} halaman JPG diunduh.`);
     } catch (error) {
       setPhase("error");
       setMessage(error instanceof Error ? error.message : "Gagal membuat JPG.");
+    }
+  }
+
+  async function downloadZipPages() {
+    if (!items.length) return;
+    setPhase("working");
+    setMessage("Menyiapkan arsip ZIP...");
+    try {
+      const pages = await renderPages();
+      const files: { name: string; blob: Blob }[] = [];
+      for (let i = 0; i < pages.length; i += 1) {
+        const blob = await canvasToBlob(pages[i]!, "image/jpeg", 0.92);
+        files.push({ name: `label-resi-hal-${i + 1}.jpg`, blob });
+      }
+      await downloadZip(files, `label-resi-${items.length}pcs.zip`);
+      setPhase("done");
+      setMessage(`${files.length} halaman dikemas ke ZIP.`);
+    } catch (error) {
+      setPhase("error");
+      setMessage(error instanceof Error ? error.message : "Gagal membuat ZIP.");
     }
   }
 
@@ -356,7 +402,7 @@ export function LabelPrintCard() {
         </CardHeader>
         <CardContent className="space-y-4">
           <FileDropzone
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/*"
             multiple
             onFiles={handleFiles}
             hint="Beberapa screenshot resi sekaligus"
@@ -455,6 +501,13 @@ export function LabelPrintCard() {
             >
               <ImageIcon className="size-4" /> JPG per halaman
             </Button>
+            <Button
+              variant="secondary"
+              disabled={!items.length || phase === "working"}
+              onClick={downloadZipPages}
+            >
+              <FileArchive className="size-4" /> Download ZIP
+            </Button>
             {items.length ? (
               <Button variant="ghost" onClick={() => setItems([])}>
                 Kosongkan
@@ -479,7 +532,7 @@ export function LabelPrintCard() {
         <CardContent>
           <div
             ref={sheetRef}
-            className="flex min-h-[400px] flex-col items-center justify-center gap-4 overflow-auto rounded-xl bg-muted/40 p-4"
+            className="flex min-h-[200px] flex-col items-center justify-center gap-4 overflow-auto rounded-xl bg-muted/40 p-4 lg:min-h-[400px]"
           >
             {!items.length ? (
               <div className="text-center text-sm text-muted-foreground">

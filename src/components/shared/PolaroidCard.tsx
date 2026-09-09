@@ -56,8 +56,12 @@ export function PolaroidCard() {
       const loaded: LoadedImage[] = [];
       for (const file of ok) {
         const url = URL.createObjectURL(file);
-        const img = await loadImage(url);
-        loaded.push({ id: `${file.name}-${Date.now()}-${Math.random()}`, name: file.name, url, img });
+        try {
+          const img = await loadImage(url);
+          loaded.push({ id: `${file.name}-${Date.now()}-${Math.random()}`, name: file.name, url, img });
+        } catch {
+          URL.revokeObjectURL(url);
+        }
       }
       setImages((prev) => [...prev, ...loaded]);
       if (tooLarge.length) {
@@ -151,7 +155,11 @@ export function PolaroidCard() {
         const mime = format === "png" ? "image/png" : "image/jpeg";
         const blob = await canvasToBlob(canvas, mime, 0.92);
         const fileName = `polaroid-${i + 1}.${format}`;
-        downloadBlob(blob, fileName);
+        if (i === 0) {
+          downloadBlob(blob, fileName);
+        } else {
+          setTimeout(() => downloadBlob(blob, fileName), i * 300);
+        }
         try {
           await saveResult({ category: "photo", tool: "polaroid", fileName, blob });
         } catch { /* Riwayat opsional */ }
@@ -184,11 +192,11 @@ export function PolaroidCard() {
                   <div key={item.id} className="relative aspect-square overflow-hidden rounded-lg border bg-muted/30">
                     <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
                     <button
-                      className="absolute right-1 top-1 flex size-5 items-center justify-center rounded bg-black/75 text-white"
+                      className="absolute right-1 top-1 flex size-7 items-center justify-center rounded bg-black/75 text-white"
                       onClick={() => removeImage(item.id)}
                       aria-label="Hapus foto"
                     >
-                      <X className="size-2.5" />
+                      <X className="size-3.5" />
                     </button>
                   </div>
                 ))}
@@ -203,7 +211,7 @@ export function PolaroidCard() {
             </div>
           ) : (
             <FileDropzone
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/*"
               multiple
               onFiles={handleFiles}
               hint="Pilih satu atau beberapa foto"
@@ -213,7 +221,7 @@ export function PolaroidCard() {
           {/* Frame style — visual picker */}
           <div className="space-y-2">
             <Label>Gaya bingkai</Label>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
               {FRAME_STYLES.map((s) => (
                 <button
                   key={s.value}
@@ -286,6 +294,17 @@ export function PolaroidCard() {
             ) : null}
           </div>
 
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files) handleFiles(Array.from(e.target.files));
+              e.target.value = "";
+            }}
+          />
           <ProcessState phase={phase} message={message} />
         </CardContent>
       </Card>
@@ -301,7 +320,7 @@ export function PolaroidCard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex min-h-[400px] flex-wrap items-center justify-center gap-4 rounded-xl bg-muted/40 p-4">
+          <div className="flex min-h-[200px] flex-wrap items-center justify-center gap-4 rounded-xl bg-muted/40 p-4 lg:min-h-[400px]">
             {!images.length ? (
               <div className="text-center text-sm text-muted-foreground">
                 <Plus className="mx-auto mb-2 size-8 opacity-40" />
@@ -312,7 +331,7 @@ export function PolaroidCard() {
                 <canvas
                   key={item.id}
                   ref={(el) => {
-                    if (el) previewRefs.current[i] = el;
+                    previewRefs.current[i] = el;
                   }}
                   className="h-auto rounded-lg shadow-md"
                   style={{ maxHeight: "220px", width: "auto" }}

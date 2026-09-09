@@ -4,14 +4,14 @@ import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/image";
 
 export function FileDropzone({
-  accept,
+  accept = "image/*",
   multiple = false,
   onFiles,
   onRemoveFile,
   files,
   hint,
 }: {
-  accept: string;
+  accept?: string;
   multiple?: boolean;
   onFiles: (files: File[]) => void;
   onRemoveFile?: (index: number) => void;
@@ -52,7 +52,12 @@ export function FileDropzone({
         role="button"
         tabIndex={0}
         onClick={() => inputRef.current?.click()}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && inputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            inputRef.current?.click();
+          }
+        }}
         onDragOver={(e) => {
           e.preventDefault();
           setOver(true);
