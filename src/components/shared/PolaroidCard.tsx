@@ -34,7 +34,7 @@ export function PolaroidCard() {
   const [captionSize, setCaptionSize] = useState(24);
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | undefined>(undefined);
-  const previewRefs = useRef<HTMLCanvasElement[]>([]);
+  const previewRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const style = FRAME_STYLES.find((s) => s.value === frameStyle) ?? FRAME_STYLES[0]!;
