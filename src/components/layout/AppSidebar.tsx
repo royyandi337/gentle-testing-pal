@@ -257,7 +257,12 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="min-h-0 flex-1 gap-1 overflow-y-auto overscroll-contain">
+      <SidebarContent
+        className={cn(
+          "min-h-0 gap-1 overflow-y-auto overscroll-contain",
+          isOwner ? "!flex-none" : "flex-1",
+        )}
+      >
         {NAV_GROUPS.map((group, index) => (
           <div key={group.label}>
             {index > 0 ? <SidebarSeparator className="my-1 group-data-[collapsible=icon]:mx-auto" /> : null}
@@ -271,12 +276,16 @@ export function AppSidebar() {
         {isAdvertiser ? <div><SidebarSeparator className="my-1 group-data-[collapsible=icon]:mx-auto" /><SidebarGroup className="py-1"><SidebarGroupLabel className="text-[0.68rem] font-medium uppercase tracking-wider text-sidebar-foreground/55">Iklan Anda</SidebarGroupLabel><SidebarGroupContent><div className="px-2 text-[11px] leading-relaxed text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">Campaign Manager dan Billing belum tersedia pada aplikasi ini.</div></SidebarGroupContent></SidebarGroup></div> : null}
       </SidebarContent>
 
-      <div className="shrink-0 space-y-2 border-t border-sidebar-border px-2 py-2 group-data-[collapsible=icon]:hidden">
+      <div className="shrink-0 border-t border-sidebar-border px-2 pt-2 group-data-[collapsible=icon]:hidden">
         <CreditIndicator />
-        <div className="min-h-40">{shouldShowAdSlot(effectiveRole) ? <AdSlot variant="sidebar" /> : null}</div>
+        {shouldShowAdSlot(effectiveRole) ? (
+          <div className="mt-2 min-h-40">
+            <AdSlot variant="sidebar" />
+          </div>
+        ) : null}
       </div>
 
-      <SidebarFooter className="shrink-0 border-t border-sidebar-border">
+      <SidebarFooter className="shrink-0 border-t border-sidebar-border gap-1">
         <AccountStatusCard tier={tier} role={account.role} trialExpiresAt={account.trialExpiresAt} loading={accountLoading} />
         {shouldShowUpgradeCTA(effectiveRole) ? <Link to="/akun" className="mx-2 mb-2 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 group-data-[collapsible=icon]:hidden"><Crown className="size-3.5" /> Upgrade</Link> : null}
         <SidebarMenu>
