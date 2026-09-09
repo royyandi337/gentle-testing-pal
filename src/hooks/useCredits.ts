@@ -82,6 +82,23 @@ export function useCredits(): CreditsInfo {
   useEffect(() => {
     const listener = (s: CreditsState) => setState(s);
     listeners.add(listener);
+    const realtimeChannel = supabase
+      .channel("sidebar-credits-sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => {
+          void refreshCredits().catch(() => undefined);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "usage_credits" },
+        () => {
+          void refreshCredits().catch(() => undefined);
+        },
+      )
+      .subscribe();
 
     if (cached === null) {
       // Deduplicate the initial fetch across simultaneously mounted consumers.
@@ -102,6 +119,7 @@ export function useCredits(): CreditsInfo {
 
     return () => {
       listeners.delete(listener);
+      void supabase.removeChannel(realtimeChannel);
     };
   }, []);
 

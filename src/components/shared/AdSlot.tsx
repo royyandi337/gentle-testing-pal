@@ -28,7 +28,7 @@ export function AdSlot({
     return <Skeleton className={`${VARIANT_CLASSES[variant]} ${className ?? ""}`} />;
   }
 
-  if (tier === "regular" || tier === "premium") return null;
+  if (tier === "premium") return null;
 
   return (
     <div
@@ -39,7 +39,7 @@ export function AdSlot({
         Iklan
       </p>
       <p className="text-[9.5px] text-sidebar-foreground/40">
-        {VARIANT_LABEL[variant]} — tampil khusus tier Trial
+        {VARIANT_LABEL[variant]} — tampil untuk paket gratis
       </p>
     </div>
   );

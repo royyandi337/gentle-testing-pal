@@ -9,7 +9,7 @@ export function CreditIndicator({ className }: { className?: string }) {
     return (
       <div
         className={cn(
-          "flex items-center gap-1.5 rounded-lg bg-sidebar-accent/50 px-2.5 py-1.5 text-xs text-sidebar-foreground/70",
+          "flex h-8 items-center gap-1.5 rounded-lg bg-sidebar-accent/50 px-2.5 py-1.5 text-xs text-sidebar-foreground/70",
           className,
         )}
       >
@@ -23,11 +23,11 @@ export function CreditIndicator({ className }: { className?: string }) {
     return (
       <div
         className={cn(
-          "flex items-center gap-1.5 rounded-lg bg-accent/15 px-2.5 py-1.5 text-xs font-medium text-accent",
+          "flex h-8 items-center gap-1.5 rounded-lg bg-accent/15 px-2.5 py-1.5 text-xs font-medium text-accent",
           className,
         )}
       >
-        <Crown className="size-3" /> Premium
+        <Crown className="size-3" /> PRO
       </div>
     );
   }
@@ -43,7 +43,7 @@ export function CreditIndicator({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-1.5 rounded-lg bg-sidebar-accent/50 px-2.5 py-1.5 text-xs text-sidebar-foreground/80",
+        "flex h-8 items-center gap-1.5 rounded-lg bg-sidebar-accent/50 px-2.5 py-1.5 text-xs text-sidebar-foreground/80",
         className,
       )}
     >
