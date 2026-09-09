@@ -1,9 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X, Plus, Download, RectangleHorizontal, RectangleVertical } from "lucide-react";
+import {
+  X,
+  Plus,
+  Download,
+  RectangleHorizontal,
+  RectangleVertical,
+  LayoutGrid,
+} from "lucide-react";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { ProcessState, type Phase } from "@/components/shared/ProcessState";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -40,8 +53,17 @@ const BG_COLORS = [
 
 const CANVAS_SIZE = 1200;
 
+// Portrait = 3:4 aspect ratio, Landscape = 4:3 aspect ratio
+const PORTRAIT_RATIO = 3 / 4;
+const LANDSCAPE_RATIO = 4 / 3;
+
 type LoadedImage = { id: string; name: string; url: string; img: HTMLImageElement };
-type TextOverlay = { id: string; text: string; size: number; position: "atas" | "tengah" | "bawah" };
+type TextOverlay = {
+  id: string;
+  text: string;
+  size: number;
+  position: "atas" | "tengah" | "bawah";
+};
 
 export function CollageCard() {
   const [images, setImages] = useState<LoadedImage[]>([]);
@@ -61,6 +83,9 @@ export function CollageCard() {
   const maxPhotos = 9;
   const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
+  const isLandscape = orientation === "landscape";
+  const pageRatio = isLandscape ? LANDSCAPE_RATIO : PORTRAIT_RATIO;
+
   async function handleFiles(files: File[]) {
     const valid = files.filter((f) => f.type.startsWith("image/"));
     if (!valid.length) return;
@@ -75,7 +100,12 @@ export function CollageCard() {
         const url = URL.createObjectURL(file);
         try {
           const img = await loadImage(url);
-          loaded.push({ id: `${file.name}-${Date.now()}-${Math.random()}`, name: file.name, url, img });
+          loaded.push({
+            id: `${file.name}-${Date.now()}-${Math.random()}`,
+            name: file.name,
+            url,
+            img,
+          });
         } catch {
           URL.revokeObjectURL(url);
         }
@@ -104,10 +134,16 @@ export function CollageCard() {
 
   const renderCollage = useCallback((): HTMLCanvasElement => {
     const canvas = document.createElement("canvas");
-    const aspectRatio = layoutDef.rows / layoutDef.cols;
-    const isLandscape = orientation === "landscape";
-    canvas.width = isLandscape ? CANVAS_SIZE : Math.round(CANVAS_SIZE * aspectRatio);
-    canvas.height = isLandscape ? Math.round(CANVAS_SIZE * aspectRatio) : CANVAS_SIZE;
+    // Use the paper aspect ratio (3:4 portrait / 4:3 landscape) for the canvas,
+    // then fit the grid cells inside it. This ensures orientation always
+    // produces a visually distinct result.
+    canvas.width = CANVAS_SIZE;
+    canvas.height = Math.round(CANVAS_SIZE / pageRatio);
+    // For landscape, swap so width > height
+    if (isLandscape) {
+      canvas.width = Math.round(CANVAS_SIZE / pageRatio);
+      canvas.height = CANVAS_SIZE;
+    }
     const ctx = canvas.getContext("2d")!;
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -179,7 +215,14 @@ export function CollageCard() {
           ctx.moveTo(x + w2, y + h2 * 0.3);
           ctx.bezierCurveTo(x + w2, y, x, y, x + w2 * 0.1, y + h2 * 0.1);
           ctx.bezierCurveTo(x, y + h2 * 0.5, x + w2, y + h2 * 0.8, x + w2, y + h2);
-          ctx.bezierCurveTo(x + w2, y + h2 * 0.8, x + cellW, y + h2 * 0.5, x + cellW - w2 * 0.1, y + h2 * 0.1);
+          ctx.bezierCurveTo(
+            x + w2,
+            y + h2 * 0.8,
+            x + cellW,
+            y + h2 * 0.5,
+            x + cellW - w2 * 0.1,
+            y + h2 * 0.1,
+          );
           ctx.bezierCurveTo(x + cellW, y, x + w2, y, x + w2, y + h2 * 0.3);
           ctx.closePath();
         }
@@ -196,14 +239,19 @@ export function CollageCard() {
       ctx.font = `bold ${t.size}px "Space Grotesk", sans-serif`;
       ctx.textAlign = "center";
       const yPos =
-        t.position === "atas" ? t.size + 20 : t.position === "tengah" ? canvas.height / 2 : canvas.height - 20;
+        t.position === "atas"
+          ? t.size + 20
+          : t.position === "tengah"
+            ? canvas.height / 2
+            : canvas.height - 20;
       ctx.strokeText(t.text, canvas.width / 2, yPos);
       ctx.fillText(t.text, canvas.width / 2, yPos);
     }
 
     return canvas;
-  }, [images, layoutDef, slots, spacing, bgColor, shape, texts, orientation]);
+  }, [images, layoutDef, slots, spacing, bgColor, shape, texts, orientation, isLandscape, pageRatio]);
 
+  // Re-render preview whenever any visual parameter changes — including orientation
   useEffect(() => {
     if (!previewRef.current || !images.length) return;
     const canvas = renderCollage();
@@ -211,8 +259,9 @@ export function CollageCard() {
     preview.width = canvas.width;
     preview.height = canvas.height;
     const ctx = preview.getContext("2d")!;
+    ctx.clearRect(0, 0, preview.width, preview.height);
     ctx.drawImage(canvas, 0, 0);
-  }, [renderCollage, images.length]);
+  }, [renderCollage, images.length, orientation, layoutId, shape, bgColor, spacing, texts]);
 
   async function download(format: "jpg" | "png" | "pdf") {
     if (!images.length) return;
@@ -230,16 +279,22 @@ export function CollageCard() {
         const page = doc.addPage([canvas.width, canvas.height]);
         page.drawImage(embedded, { x: 0, y: 0, width: canvas.width, height: canvas.height });
         const bytes = await doc.save();
-        const pdf = new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" });
+        const pdf = new Blob([bytes.slice().buffer as ArrayBuffer], {
+          type: "application/pdf",
+        });
         downloadBlob(pdf, fileName);
         try {
           await saveResult({ category: "photo", tool: "kolase", fileName, blob: pdf });
-        } catch { /* Riwayat opsional */ }
+        } catch {
+          /* Riwayat opsional */
+        }
       } else {
         downloadBlob(blob, fileName);
         try {
           await saveResult({ category: "photo", tool: "kolase", fileName, blob });
-        } catch { /* Riwayat opsional */ }
+        } catch {
+          /* Riwayat opsional */
+        }
       }
       setPhase("done");
       setMessage(`${fileName} siap diunduh.`);
@@ -250,7 +305,10 @@ export function CollageCard() {
   }
 
   function addText() {
-    setTexts((prev) => [...prev, { id: `text-${Date.now()}-${Math.random()}`, text: "", size: 24, position: "bawah" }]);
+    setTexts((prev) => [
+      ...prev,
+      { id: `text-${Date.now()}-${Math.random()}`, text: "", size: 24, position: "bawah" },
+    ]);
   }
   function updateText(id: string, key: keyof TextOverlay, value: string | number) {
     setTexts((prev) => prev.map((t) => (t.id === id ? { ...t, [key]: value } : t)));
@@ -264,22 +322,92 @@ export function CollageCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Kolase Foto</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <LayoutGrid className="size-4 text-muted-foreground" /> Kolase Foto
+        </CardTitle>
         <CardDescription>
           Susun beberapa foto jadi satu kolase dengan berbagai layout dan bentuk kreatif.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-5 lg:grid-cols-[250px_1fr]">
-          {/* Left sidebar — controls */}
-          <div className="space-y-5">
+        <div className="flex flex-col gap-4 lg:flex-row">
+          {/* Left — sticky preview (desktop), sticky-top (mobile) */}
+          <div className="sticky top-0 z-50 max-h-[40vh] overflow-y-auto bg-background/80 px-4 pb-3 pt-2 backdrop-blur-md lg:sticky lg:top-4 lg:z-auto lg:max-h-none lg:flex-1 lg:overflow-visible lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0 lg:backdrop-blur-none lg:h-[calc(100vh-2rem)]">
+            <div className="flex h-full flex-col items-center gap-3">
+              {!images.length ? (
+                <div className="w-full">
+                  <FileDropzone
+                    accept="image/*"
+                    multiple
+                    onFiles={handleFiles}
+                    hint="Pilih beberapa foto sekaligus"
+                  />
+                </div>
+              ) : (
+                <>
+                  <div
+                    key={`preview-${orientation}`}
+                    className={`flex w-full items-center justify-center overflow-hidden rounded-xl border bg-muted/30 p-2 ${
+                      isLandscape ? "aspect-[4/3]" : "aspect-[3/4]"
+                    }`}
+                  >
+                    <canvas
+                      ref={previewRef}
+                      className="h-auto max-h-full w-auto max-w-full object-contain"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {filledSlots} dari {slots} slot terisi · {orientation}
+                  </p>
+                  <div className="flex w-full flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      disabled={phase === "working"}
+                      onClick={() => download("jpg")}
+                    >
+                      <Download className="size-4" /> Download JPG
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={phase === "working"}
+                      onClick={() => download("png")}
+                    >
+                      <Download className="size-4" /> PNG
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={phase === "working"}
+                      onClick={() => download("pdf")}
+                    >
+                      <Download className="size-4" /> PDF
+                    </Button>
+                  </div>
+                </>
+              )}
+              <ProcessState phase={phase} message={message} />
+            </div>
+          </div>
+
+          {/* Right — controls (scrollable on desktop, below preview on mobile) */}
+          <div className="space-y-5 lg:w-[340px] lg:flex-shrink-0 lg:overflow-y-auto lg:h-[calc(100vh-2rem)] lg:pr-1">
             {/* Photo strip */}
             <div className="space-y-2">
               <Label>Foto ({images.length}/{maxPhotos})</Label>
               <div className="grid grid-cols-3 gap-2">
                 {images.map((item) => (
-                  <div key={item.id} className="relative aspect-square overflow-hidden rounded-lg border bg-muted/30">
-                    <img src={item.url} alt={item.name} loading="lazy" className="h-full w-full object-cover" />
+                  <div
+                    key={item.id}
+                    className="relative aspect-square overflow-hidden rounded-lg border bg-muted/30"
+                  >
+                    <img
+                      src={item.url}
+                      alt={item.name}
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                    />
                     <button
                       className="absolute right-1 top-1 flex size-7 items-center justify-center rounded bg-black/75 text-white"
                       onClick={() => removeImage(item.id)}
@@ -332,12 +460,46 @@ export function CollageCard() {
                     aria-label={l.label}
                   >
                     {Array.from({ length: l.slots }).map((_, i) => (
-                      <i key={i} className="block rounded-[1px]" style={{
-                        backgroundColor: layoutId === l.id ? "hsl(var(--primary))" : "hsl(var(--muted-foreground) / 0.4)",
-                      }} />
+                      <i
+                        key={i}
+                        className="block rounded-[1px]"
+                        style={{
+                          backgroundColor:
+                            layoutId === l.id
+                              ? "hsl(var(--primary))"
+                              : "hsl(var(--muted-foreground) / 0.4)",
+                        }}
+                      />
                     ))}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Orientation picker */}
+            <div className="space-y-2">
+              <Label>Orientasi kertas</Label>
+              <div className="flex gap-2">
+                <button
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                    orientation === "portrait"
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card hover:border-foreground/30"
+                  }`}
+                  onClick={() => setOrientation("portrait")}
+                >
+                  <RectangleVertical className="size-4" /> Portrait
+                </button>
+                <button
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                    orientation === "landscape"
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card hover:border-foreground/30"
+                  }`}
+                  onClick={() => setOrientation("landscape")}
+                >
+                  <RectangleHorizontal className="size-4" /> Landscape
+                </button>
               </div>
             </div>
 
@@ -383,33 +545,6 @@ export function CollageCard() {
                     {c.label}
                   </button>
                 ))}
-              </div>
-            </div>
-
-            {/* Orientation picker */}
-            <div className="space-y-2">
-              <Label>Orientasi</Label>
-              <div className="flex gap-2">
-                <button
-                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
-                    orientation === "portrait"
-                      ? "border-primary bg-muted/40"
-                      : "border-border bg-card hover:border-foreground/30"
-                  }`}
-                  onClick={() => setOrientation("portrait")}
-                >
-                  <RectangleVertical className="size-4" /> Portrait
-                </button>
-                <button
-                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
-                    orientation === "landscape"
-                      ? "border-primary bg-muted/40"
-                      : "border-border bg-card hover:border-foreground/30"
-                  }`}
-                  onClick={() => setOrientation("landscape")}
-                >
-                  <RectangleHorizontal className="size-4" /> Landscape
-                </button>
               </div>
             </div>
 
@@ -480,45 +615,6 @@ export function CollageCard() {
               </button>
             </div>
           </div>
-
-          {/* Right — live canvas preview */}
-          <div className="flex flex-col items-center gap-3">
-            {!images.length ? (
-              <div className="w-full">
-                <FileDropzone
-                  accept="image/*"
-                  multiple
-                  onFiles={handleFiles}
-                  hint="Pilih beberapa foto sekaligus"
-                />
-              </div>
-            ) : (
-              <>
-                <div className="w-full overflow-hidden rounded-xl border bg-muted/30 p-2">
-                  <canvas
-                    ref={previewRef}
-                    className="h-auto w-full"
-                    style={{ maxHeight: "min(420px, 50vh)" }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {filledSlots} dari {slots} slot terisi
-                </p>
-                <div className="flex w-full flex-wrap gap-2">
-                  <Button size="sm" className="flex-1" disabled={phase === "working"} onClick={() => download("jpg")}>
-                    <Download className="size-4" /> Download JPG
-                  </Button>
-                  <Button variant="outline" size="sm" disabled={phase === "working"} onClick={() => download("png")}>
-                    <Download className="size-4" /> PNG
-                  </Button>
-                  <Button variant="outline" size="sm" disabled={phase === "working"} onClick={() => download("pdf")}>
-                    <Download className="size-4" /> PDF
-                  </Button>
-                </div>
-              </>
-            )}
-            <ProcessState phase={phase} message={message} />
-          </div>
         </div>
       </CardContent>
     </Card>
@@ -536,7 +632,10 @@ function ShapeIcon({ id, active }: { id: ShapeId; active: boolean }) {
       {id === "diamond" && <path d="M12 2 22 12 12 22 2 12z" strokeLinejoin="round" />}
       {id === "hexagon" && <path d="M8 3h8l5 9-5 9H8l-5-9z" strokeLinejoin="round" />}
       {id === "star" && (
-        <path d="m12 2 2.9 6 6.6.9-4.8 4.6 1.1 6.5L12 17l-5.8 3 1.1-6.5-4.8-4.6 6.6-.9z" strokeLinejoin="round" />
+        <path
+          d="m12 2 2.9 6 6.6.9-4.8 4.6 1.1 6.5L12 17l-5.8 3 1.1-6.5-4.8-4.6 6.6-.9z"
+          strokeLinejoin="round"
+        />
       )}
       {id === "heart" && (
         <path
