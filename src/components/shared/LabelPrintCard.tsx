@@ -278,27 +278,30 @@ export function LabelPrintCard() {
     return pages;
   }, [items, pageCount, pageW, pageH, layoutDef, cols, rows, perPage, cardW, cardH, margin]);
 
-  // Live A4 sheet preview
+  // Live A4 sheet preview — canvas host is a stable div that React never
+  // adds/removes children to; only this effect mutates it via replaceChildren.
+  // The placeholder is a sibling toggled via CSS to avoid DOM structure conflicts.
   useEffect(() => {
     const host = sheetRef.current;
-    if (!host || !items.length) {
-      if (host) host.replaceChildren();
+    if (!host) return;
+    let cancelled = false;
+    if (!items.length) {
+      host.replaceChildren();
       setSheetInfo(undefined);
       return;
     }
-    let cancelled = false;
     (async () => {
       try {
         const pages = await renderPages();
         if (cancelled || !host) return;
         host.replaceChildren();
-      for (const canvas of pages) {
-        canvas.style.maxHeight = `${Math.min(460, window.innerHeight * 0.5) * zoom}px`;
-        canvas.style.width = "auto";
-        canvas.style.maxWidth = "100%";
-        canvas.className = "rounded-xl border shadow-sm bg-white";
-        host.appendChild(canvas);
-      }
+        for (const canvas of pages) {
+          canvas.style.maxHeight = `${Math.min(460, window.innerHeight * 0.5) * zoom}px`;
+          canvas.style.width = "auto";
+          canvas.style.maxWidth = "100%";
+          canvas.className = "rounded-xl border shadow-sm bg-white";
+          host.appendChild(canvas);
+        }
         setSheetInfo({ pages: pages.length, perPage });
       } catch (error) {
         if (!cancelled) {
@@ -307,7 +310,9 @@ export function LabelPrintCard() {
         }
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [renderPages, items.length, perPage, zoom]);
 
   async function handleFiles(files: File[]) {
@@ -567,16 +572,20 @@ export function LabelPrintCard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div
-            ref={sheetRef}
-            className="flex min-h-[200px] flex-col items-center justify-center gap-4 overflow-auto rounded-xl bg-muted/40 p-4 lg:min-h-[400px]"
-          >
-            {!items.length ? (
-              <div className="text-center text-sm text-muted-foreground">
-                <Printer className="mx-auto mb-2 size-8 opacity-40" />
-                Pratinjau akan muncul di sini setelah resi diunggah.
-              </div>
-            ) : null}
+          <div className="relative flex min-h-[200px] flex-col items-center justify-center gap-4 overflow-auto rounded-xl bg-muted/40 p-4 lg:min-h-[400px]">
+            {/* Placeholder — toggled via CSS, never unmounted to keep DOM stable */}
+            <div
+              className={`absolute inset-0 flex flex-col items-center justify-center text-center text-sm text-muted-foreground transition-opacity ${items.length ? "pointer-events-none opacity-0" : "opacity-100"}`}
+            >
+              <Printer className="mx-auto mb-2 size-8 opacity-40" />
+              Pratinjau akan muncul di sini setelah resi diunggah.
+            </div>
+            {/* Canvas host — stable div, only mutated by the effect above */}
+            <div
+              key={`sheet-host-${items.length > 0 ? "has-items" : "empty"}`}
+              ref={sheetRef}
+              className="flex flex-col items-center gap-4"
+            />
           </div>
 
           {items.length ? (
