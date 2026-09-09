@@ -37,7 +37,7 @@ export const Route = createFileRoute("/api/enhance-image")({
             2,
             0.5,
           ]);
-          const deduction = await deductCredit(auth.supabase);
+          const deduction = await deductCredit(auth.supabase, "enhance_image");
           if (!deduction.ok) {
             return Response.json({ error: deduction.error }, { status: 500 });
           }

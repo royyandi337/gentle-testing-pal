@@ -185,23 +185,24 @@ export function AppSidebar() {
     let active = true;
 
     async function loadAccount() {
-      const [{ data: profile }, { data: role }] = await Promise.all([
-        supabase.from("profiles").select("avatar_url, trial_expires_at").eq("id", user.id).maybeSingle(),
-        supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle(),
-      ]);
+      const { data, error } = await supabase.rpc("get_sidebar_user_data").maybeSingle();
       if (!active) return;
-      const nextRole = role?.role;
+      if (error || !data) {
+        setAccount((current) => ({ ...current, loading: false }));
+        return;
+      }
+      const nextRole = data.role;
       setAccount({
         role: nextRole === "owner" || nextRole === "admin" || nextRole === "advertiser" ? nextRole : "user",
-        avatarUrl: profile?.avatar_url ?? null,
-        trialExpiresAt: profile?.trial_expires_at ?? null,
+        avatarUrl: data.avatar_url ?? null,
+        trialExpiresAt: data.trial_expires_at ?? null,
         loading: false,
       });
     }
 
     void loadAccount();
     const channel = supabase
-      .channel(`sidebar-account-${user.id}`)
+      .channel(`sidebar-account-${user.id}-${Date.now()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `id=eq.${user.id}` }, () => void loadAccount())
       .on("postgres_changes", { event: "*", schema: "public", table: "user_roles", filter: `user_id=eq.${user.id}` }, () => void loadAccount())
       .subscribe();

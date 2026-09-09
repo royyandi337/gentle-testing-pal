@@ -110,6 +110,7 @@ export type Database = {
           full_name: string | null
           id: string
           tier: Database["public"]["Enums"]["app_tier"]
+          trial_expires_at: string | null
           updated_at: string
         }
         Insert: {
@@ -119,6 +120,7 @@ export type Database = {
           full_name?: string | null
           id: string
           tier?: Database["public"]["Enums"]["app_tier"]
+          trial_expires_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -128,6 +130,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           tier?: Database["public"]["Enums"]["app_tier"]
+          trial_expires_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -328,7 +331,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      deduct_credit: { Args: { amount?: number }; Returns: number }
+      deduct_credit: { Args: { p_feature_key?: string }; Returns: number }
       get_all_users: {
         Args: never
         Returns: {
@@ -341,11 +344,20 @@ export type Database = {
         }[]
       }
       get_remaining_credits: { Args: never; Returns: number }
+      get_sidebar_user_data: {
+        Args: never
+        Returns: {
+          tier: Database["public"]["Enums"]["app_tier"]
+          role: Database["public"]["Enums"]["app_role"] | null
+          avatar_url: string | null
+          trial_expires_at: string | null
+        }[]
+      }
     }
     Enums: {
       ai_job_status: "queued" | "processing" | "completed" | "failed"
       ai_job_type: "background_removal" | "image_enhancement" | "auto_photo"
-      app_role: "owner" | "admin" | "user"
+      app_role: "owner" | "admin" | "advertiser" | "user"
       app_tier: "trial" | "regular" | "premium"
     }
     CompositeTypes: {
@@ -476,7 +488,7 @@ export const Constants = {
     Enums: {
       ai_job_status: ["queued", "processing", "completed", "failed"],
       ai_job_type: ["background_removal", "image_enhancement", "auto_photo"],
-      app_role: ["owner", "admin", "user"],
+      app_role: ["owner", "admin", "advertiser", "user"],
       app_tier: ["trial", "regular", "premium"],
     },
   },

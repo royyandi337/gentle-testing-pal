@@ -8,13 +8,20 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!mounted) return;
+        setSession(data.session);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (mounted) setLoading(false);
+      });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      if (!mounted) return;
       setSession(next);
+      setLoading(false);
     });
     return () => {
       mounted = false;

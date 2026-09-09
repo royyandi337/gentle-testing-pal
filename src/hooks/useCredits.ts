@@ -10,7 +10,7 @@ type CreditsInfo = {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  deduct: (amount: number) => Promise<boolean>;
+  deduct: (featureKey: string) => Promise<boolean>;
 };
 
 const TIER_LIMITS: Record<Tier, number> = {
@@ -64,9 +64,9 @@ export function useCredits(): CreditsInfo {
     }
   }, []);
 
-  const deduct = useCallback(async (amount: number): Promise<boolean> => {
+  const deduct = useCallback(async (featureKey: string): Promise<boolean> => {
     try {
-      const { data, error: dedError } = await supabase.rpc("deduct_credit", { amount });
+      const { data, error: dedError } = await supabase.rpc("deduct_credit", { p_feature_key: featureKey });
       if (dedError) throw dedError;
       notifyAll({
         remaining: (data as number) ?? 0,
@@ -83,7 +83,7 @@ export function useCredits(): CreditsInfo {
     const listener = (s: CreditsState) => setState(s);
     listeners.add(listener);
     const realtimeChannel = supabase
-      .channel("sidebar-credits-sync")
+      .channel(`sidebar-credits-sync-${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "profiles" },

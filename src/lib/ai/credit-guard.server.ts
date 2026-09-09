@@ -62,7 +62,8 @@ export async function checkCredit(
 
 export async function deductCredit(
   supabase: ReturnType<typeof createClient<Database>>,
+  featureKey: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await supabase.rpc("deduct_credit", { amount: 1 });
+  const { error } = await supabase.rpc("deduct_credit", { p_feature_key: featureKey });
   return error ? { ok: false, error: "Gagal memotong credit." } : { ok: true };
 }

@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/remove-background")({
           const file = await readImageUpload(request);
           const payload = await uploadImagePayload(SPACE_BASE, file);
           const image = await callGradio(SPACE_BASE, "/png", [payload]);
-          const deduction = await deductCredit(auth.supabase);
+          const deduction = await deductCredit(auth.supabase, "remove_background");
           if (!deduction.ok) {
             return Response.json({ error: deduction.error }, { status: 500 });
           }
