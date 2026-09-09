@@ -29,6 +29,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -173,6 +174,7 @@ function AccountStatusCard({
 }
 
 export function AppSidebar() {
+  const { state: sidebarState } = useSidebar();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -286,8 +288,12 @@ export function AppSidebar() {
       </div>
 
       <SidebarFooter className="shrink-0 border-t border-sidebar-border gap-1">
-        <AccountStatusCard tier={tier} role={account.role} trialExpiresAt={account.trialExpiresAt} loading={accountLoading} />
-        {shouldShowUpgradeCTA(effectiveRole) ? <Link to="/akun" className="mx-2 mb-2 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 group-data-[collapsible=icon]:hidden"><Crown className="size-3.5" /> Upgrade</Link> : null}
+        {sidebarState === "expanded" ? (
+          <div>
+            <AccountStatusCard tier={tier} role={account.role} trialExpiresAt={account.trialExpiresAt} loading={accountLoading} />
+            {shouldShowUpgradeCTA(effectiveRole) ? <Link to="/akun" className="mx-2 mb-2 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90"><Crown className="size-3.5" /> Upgrade</Link> : null}
+          </div>
+        ) : null}
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
