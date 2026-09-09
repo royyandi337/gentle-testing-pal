@@ -64,6 +64,7 @@ type BatchItem = {
   done: boolean;
   resultLabel: string;
   blob?: Blob;
+  angle?: number;
 };
 
 function formatSize(bytes: number) {
@@ -725,88 +726,33 @@ function ConvertPanel() {
 
 /* ===== Rotate Panel ===== */
 
-type RotateItem = { id: string; file: File; url: string; angle: number; blob?: Blob };
-
 function RotatePanel() {
-  const [items, setItems] = useState<RotateItem[]>([]);
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [message, setMessage] = useState<string | undefined>(undefined);
-  const [progress, setProgress] = useState<number | undefined>(undefined);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const tool = useBatchTool();
 
-  function addFiles(files: File[]) {
-    const valid = files.filter((f) => f.type.startsWith("image/"));
-    const tooLarge = valid.filter((f) => f.size > MAX_FILE_SIZE);
-    const ok = valid.filter((f) => f.size <= MAX_FILE_SIZE);
-    const newItems = ok.map((f) => ({
-      id: `${f.name}-${Date.now()}-${Math.random()}`,
-      file: f,
-      url: URL.createObjectURL(f),
-      angle: 0,
-    }));
-    setItems((prev) => [...prev, ...newItems]);
-    if (tooLarge.length) {
-      setPhase("error");
-      setMessage(`${tooLarge.length} file dilewati karena melebihi batas ${MAX_FILE_SIZE / 1024 / 1024}MB.`);
-    }
-  }
-  function removeItem(id: string) {
-    setItems((prev) => {
-      const target = prev.find((i) => i.id === id);
-      if (target) URL.revokeObjectURL(target.url);
-      return prev.filter((item) => item.id !== id);
-    });
-  }
   function rotateItem(id: string, delta: number) {
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, angle: item.angle + delta } : item)),
+    tool.setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, angle: (item.angle ?? 0) + delta } : item,
+      ),
     );
   }
   function resetItem(id: string) {
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, angle: 0 } : item)));
-  }
-  function clearAll() {
-    setItems((prev) => {
-      prev.forEach((item) => URL.revokeObjectURL(item.url));
-      return [];
-    });
-    setPhase("idle");
-    setMessage(undefined);
-    setProgress(undefined);
+    tool.setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, angle: 0 } : item)),
+    );
   }
 
-  async function downloadAllZipRotate() {
-    const done = items.filter((i) => i.blob);
-    if (!done.length) return;
-    setPhase("working");
-    setMessage("Menyiapkan arsip ZIP...");
+  async function processAll() {
+    if (!tool.items.length) return;
+    tool.setPhase("working");
+    tool.setProgress(0);
+    tool.setMessage(`Memproses ${tool.items.length} foto...`);
     try {
-      await downloadZip(
-        done.map((i) => {
-          const ext = i.file.type === "image/png" ? "png" : i.file.type === "image/webp" ? "webp" : "jpg";
-          return { name: `${i.file.name.replace(/\.[^.]+$/, "")}-rotated.${ext}`, blob: i.blob! };
-        }),
-        `photo-tools-rotated-${done.length}file.zip`,
-      );
-      setPhase("done");
-      setMessage(`${done.length} file dikemas ke ZIP.`);
-    } catch (error) {
-      setPhase("error");
-      setMessage(error instanceof Error ? error.message : "Gagal membuat ZIP.");
-    }
-  }
-
-  async function applyAll() {
-    if (!items.length) return;
-    setPhase("working");
-    setProgress(0);
-    setMessage(`Memproses ${items.length} foto...`);
-    try {
-      const processed: RotateItem[] = [];
-      for (let idx = 0; idx < items.length; idx++) {
-        const item = items[idx]!;
+      const updated: BatchItem[] = [];
+      for (let idx = 0; idx < tool.items.length; idx++) {
+        const item = tool.items[idx]!;
         const img = await loadImage(item.url);
-        const rotate = ((item.angle % 360) + 360) % 360;
+        const rotate = (((item.angle ?? 0) % 360) + 360) % 360;
         const swap = rotate === 90 || rotate === 270;
         const w = img.naturalWidth;
         const h = img.naturalHeight;
@@ -830,24 +776,26 @@ function RotatePanel() {
         } catch {
           /* Riwayat opsional */
         }
-        processed.push({ ...item, blob });
-        if (idx === 0) {
-          downloadBlob(blob, fileName);
-        } else {
-          setTimeout(() => downloadBlob(blob, fileName), idx * 300);
-        }
-        setProgress(Math.round(((idx + 1) / items.length) * 100));
-        setMessage(`Memproses ${idx + 1}/${items.length} foto...`);
+        updated.push({ ...item, done: true, resultLabel: `${rotate}°`, blob });
+        tool.setProgress(Math.round(((idx + 1) / tool.items.length) * 100));
+        tool.setMessage(`Memproses ${idx + 1}/${tool.items.length} foto...`);
         await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }
-      setItems(processed);
-      setPhase("done");
-      setProgress(undefined);
-      setMessage(`${processed.length} foto selesai diputar dan diunduh.`);
+      tool.setItems(updated);
+      tool.setPhase("done");
+      tool.setProgress(undefined);
+      tool.setMessage(`${updated.length} foto selesai diputar. Klik "Unduh" di tiap kartu untuk menyimpan.`);
     } catch (error) {
-      setPhase("error");
-      setProgress(undefined);
-      setMessage(error instanceof Error ? error.message : "Proses rotasi gagal.");
+      tool.setPhase("error");
+      tool.setProgress(undefined);
+      tool.setMessage(error instanceof Error ? error.message : "Proses rotasi gagal.");
+    }
+  }
+
+  function downloadItem(item: BatchItem) {
+    if (item.blob) {
+      const ext = item.file.type === "image/png" ? "png" : item.file.type === "image/webp" ? "webp" : "jpg";
+      downloadBlob(item.blob, `${item.file.name.replace(/\.[^.]+$/, "")}-rotated.${ext}`);
     }
   }
 
@@ -859,24 +807,22 @@ function RotatePanel() {
         desc="Unggah beberapa foto, lalu putar satu per satu — pratinjau langsung berubah."
       />
 
-      {!items.length ? (
+      {!tool.items.length ? (
         <FileDropzone
           accept="image/*"
           multiple
-          onFiles={addFiles}
+          onFiles={tool.addFiles}
           hint="Tarik & lepas file di sini — bisa banyak foto sekaligus (maks 20MB per file)"
         />
       ) : (
         <>
-          <p className="text-xs text-muted-foreground">
-            {items.length} foto · Total {formatSize(items.reduce((s, i) => s + i.file.size, 0))}
-          </p>
+          <BatchSummary items={tool.items} />
           <div className="rotate-grid">
-            {items.map((item) => (
+            {tool.items.map((item) => (
               <div key={item.id} className="rotate-card-mockup">
                 <button
                   className="cc-remove"
-                  onClick={() => removeItem(item.id)}
+                  onClick={() => tool.removeItem(item.id)}
                   aria-label="Hapus foto"
                 >
                   <X />
@@ -887,10 +833,10 @@ function RotatePanel() {
                     src={item.url}
                     alt={item.file.name}
                     loading="lazy"
-                    style={{ transform: `rotate(${item.angle}deg)` }}
+                    style={{ transform: `rotate(${item.angle ?? 0}deg)` }}
                   />
                 </div>
-                <p className="rotate-angle">{item.angle}°</p>
+                <p className="rotate-angle">{item.angle ?? 0}°</p>
                 <div className="rotate-actions">
                   <button aria-label="Putar kiri" onClick={() => rotateItem(item.id, -90)}>
                     <RotateCcw />
@@ -905,43 +851,20 @@ function RotatePanel() {
               </div>
             ))}
           </div>
-          <div className="compress-bottombar">
-            <button
-              className="btn-secondary-line"
-              onClick={() => fileInputRef.current?.click()}
-              style={{ flex: "0 0 auto", padding: "11px 16px" }}
-            >
-              <ImagePlus className="size-4" /> Pilih Gambar
-            </button>
-            <button
-              className="icon-btn"
-              onClick={clearAll}
-              aria-label="Hapus semua"
-              style={{ flex: "0 0 auto" }}
-            >
-              <Trash2 className="size-4" />
-            </button>
-            <button
-              className="btn-action-mockup"
-              disabled={phase === "working"}
-              onClick={applyAll}
-              style={{ flex: 1 }}
-            >
-              <Download className="size-4" /> Terapkan & Unduh Semua
-            </button>
-            <button
-              className="btn-secondary-line"
-              disabled={!items.some((i) => i.blob) || phase === "working"}
-              onClick={downloadAllZipRotate}
-              style={{ flex: "0 0 auto", padding: "11px 16px" }}
-            >
-              <FileArchive className="size-4" /> Download ZIP
-            </button>
-          </div>
+          <BatchBottomBar
+            onAdd={() => tool.fileInputRef.current?.click()}
+            onClear={tool.clearAll}
+            onProcess={processAll}
+            onZip={() => tool.downloadAllZip("rotated")}
+            processLabel="Proses Semua"
+            zipLabel="Download ZIP"
+            disabled={tool.phase === "working"}
+            zipDisabled={!tool.items.some((i) => i.done) || tool.phase === "working"}
+          />
         </>
       )}
-      <HiddenInput inputRef={fileInputRef} onFiles={addFiles} />
-      <ProcessState phase={phase} message={message} progress={progress} />
+      <HiddenInput inputRef={tool.fileInputRef} onFiles={tool.addFiles} />
+      <ProcessState phase={tool.phase} message={tool.message} progress={tool.progress} />
     </div>
   );
 }

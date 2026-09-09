@@ -83,31 +83,60 @@ async function autoCrop(file: File): Promise<Cropped> {
     lightRatio.push(total ? light / total : 0);
   }
 
-  const isContent = (y: number) => (lightRatio[y] ?? 0) >= 0.6;
+  const isContentRow = (y: number) => (lightRatio[y] ?? 0) >= 0.6;
   let top = 0;
-  while (top < ph - 1 && !isContent(top)) top += 1;
+  while (top < ph - 1 && !isContentRow(top)) top += 1;
   let bottom = ph - 1;
-  while (bottom > top + 1 && !isContent(bottom)) bottom -= 1;
+  while (bottom > top + 1 && !isContentRow(bottom)) bottom -= 1;
 
   if (bottom - top < ph * 0.6) {
     top = 0;
     bottom = ph - 1;
   }
 
-  const cropTop = Math.round((top / probeScale));
-  const cropBottom = Math.round((bottom / probeScale));
+  // Horizontal crop — detect light columns
+  const colStep = Math.max(1, Math.floor(ph / 200));
+  const colLight: number[] = [];
+  for (let x = 0; x < pw; x += 1) {
+    let light = 0;
+    let total = 0;
+    for (let y = 0; y < ph; y += colStep) {
+      const i = (y * pw + x) * 4;
+      const lum = 0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]!;
+      if (lum > 170) light += 1;
+      total += 1;
+    }
+    colLight.push(total ? light / total : 0);
+  }
+
+  const isContentCol = (x: number) => (colLight[x] ?? 0) >= 0.6;
+  let left = 0;
+  while (left < pw - 1 && !isContentCol(left)) left += 1;
+  let right = pw - 1;
+  while (right > left + 1 && !isContentCol(right)) right -= 1;
+
+  if (right - left < pw * 0.5) {
+    left = 0;
+    right = pw - 1;
+  }
+
+  const cropTop = Math.round(top / probeScale);
+  const cropBottom = Math.round(bottom / probeScale);
+  const cropLeft = Math.round(left / probeScale);
+  const cropRight = Math.round(right / probeScale);
   const ch = cropBottom - cropTop + 1;
+  const cw = cropRight - cropLeft + 1;
   const out = document.createElement("canvas");
-  out.width = w;
+  out.width = cw;
   out.height = ch;
   const ctx = out.getContext("2d")!;
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, w, ch);
-  ctx.drawImage(img, 0, cropTop, w, ch, 0, 0, w, ch);
+  ctx.fillRect(0, 0, cw, ch);
+  ctx.drawImage(img, cropLeft, cropTop, cw, ch, 0, 0, cw, ch);
   return {
     name: file.name.replace(/\.[^.]+$/, ""),
     dataUrl: out.toDataURL("image/jpeg", 0.92),
-    width: w,
+    width: cw,
     height: ch,
   };
 }
@@ -152,6 +181,7 @@ export function LabelPrintCard() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | undefined>(undefined);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const imageCacheRef = useRef(new Map<string, Promise<HTMLImageElement>>());
   const [sheetInfo, setSheetInfo] = useState<{ pages: number; perPage: number }>();
 
   const layoutDef = LAYOUTS.find((l) => l.value === layout) ?? LAYOUTS[0]!;
@@ -185,6 +215,13 @@ export function LabelPrintCard() {
 
   const renderPages = useCallback(async (): Promise<HTMLCanvasElement[]> => {
     const pages: HTMLCanvasElement[] = [];
+    const getImage = (dataUrl: string) => {
+      const cached = imageCacheRef.current.get(dataUrl);
+      if (cached) return cached;
+      const promise = loadImage(dataUrl);
+      imageCacheRef.current.set(dataUrl, promise);
+      return promise;
+    };
     for (let p = 0; p < pageCount; p += 1) {
       const canvas = document.createElement("canvas");
       canvas.width = pageW;
@@ -199,7 +236,7 @@ export function LabelPrintCard() {
         const slice = items.slice(p * perPage, (p + 1) * perPage);
         for (let i = 0; i < slice.length; i += 1) {
           const item = slice[i]!;
-          const img = await loadImage(item.dataUrl);
+          const img = await getImage(item.dataUrl);
           const col = i % cols;
           const row = Math.floor(i / cols);
           const pad = 12;
@@ -221,7 +258,7 @@ export function LabelPrintCard() {
         const slice = items.slice(p * perPage, (p + 1) * perPage);
         for (let i = 0; i < slice.length; i += 1) {
           const item = slice[i]!;
-          const img = await loadImage(item.dataUrl);
+          const img = await getImage(item.dataUrl);
           const col = i % cols;
           const row = Math.floor(i / cols);
           const x = startX + col * (cardW + gap);
