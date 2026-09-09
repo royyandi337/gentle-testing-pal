@@ -258,6 +258,57 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          admin_notes: string | null
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          payment_proof_path: string | null
+          payment_proof_url: string | null
+          plan: string
+          premium_expires_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_proof_path?: string | null
+          payment_proof_url?: string | null
+          plan: string
+          premium_expires_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_proof_path?: string | null
+          payment_proof_url?: string | null
+          plan?: string
+          premium_expires_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       uploaded_files: {
         Row: {
           created_at: string
@@ -352,6 +403,39 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_subscription: {
+        Args: { p_admin_notes?: string; p_subscription_id: string }
+        Returns: Json
+      }
+      create_subscription: {
+        Args: {
+          p_notes?: string
+          p_payment_proof_path?: string
+          p_plan: string
+        }
+        Returns: {
+          admin_notes: string | null
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          payment_proof_path: string | null
+          payment_proof_url: string | null
+          plan: string
+          premium_expires_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       deduct_credit: { Args: { p_feature_key: string }; Returns: number }
       get_all_users: {
         Args: never
@@ -373,6 +457,10 @@ export type Database = {
           tier: Database["public"]["Enums"]["app_tier"]
           trial_expires_at: string
         }[]
+      }
+      reject_subscription: {
+        Args: { p_admin_notes?: string; p_subscription_id: string }
+        Returns: Json
       }
       update_feature_cost: {
         Args: { p_cost: number; p_feature_key: string }
