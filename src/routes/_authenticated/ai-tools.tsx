@@ -9,6 +9,7 @@ import {
   ScanText,
   Copy,
   FileText,
+  FileCode,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/AppShell";
@@ -165,7 +166,9 @@ async function invokeImageFunction(
   return URL.createObjectURL(blob);
 }
 
-async function invokeOcrFunction(file: File): Promise<string> {
+type OcrResult = { text: string; markdown?: string };
+
+async function invokeOcrFunction(file: File): Promise<OcrResult> {
   const form = new FormData();
   form.append("image", file);
 
@@ -204,16 +207,18 @@ async function invokeOcrFunction(file: File): Promise<string> {
     throw new Error("Format respons OCR tidak dikenali.");
   }
 
-  const payload = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+  const payload = (await res.json().catch(() => ({}))) as { text?: string; markdown?: string; error?: string };
   if (payload.error) throw new Error(payload.error);
   if (typeof payload.text !== "string") throw new Error("Respons OCR tidak berisi teks.");
-  return payload.text;
+  return { text: payload.text, markdown: payload.markdown };
 }
 
 function AiToolCard({ kind }: { kind: ToolKind }) {
   const [file, setFile] = useState<File | null>(null);
   const [before, setBefore] = useState<string | null>(null);
   const [after, setAfter] = useState<string | null>(null);
+  const [markdownContent, setMarkdownContent] = useState<string | null>(null);
+  const [showMarkdown, setShowMarkdown] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | undefined>(undefined);
 
@@ -247,6 +252,8 @@ function AiToolCard({ kind }: { kind: ToolKind }) {
     }
     setFile(picked);
     setAfter(null);
+    setMarkdownContent(null);
+    setShowMarkdown(false);
     setPhase("idle");
     setMessage(undefined);
     if (isImageTool) {
@@ -272,8 +279,10 @@ function AiToolCard({ kind }: { kind: ToolKind }) {
       } else if (kind === "remove-bg") {
         resultUrl = await invokeImageFunction("remove-background", file);
       } else if (kind === "ocr") {
-        const text = await invokeOcrFunction(file);
-        resultUrl = text;
+        const ocrResult = await invokeOcrFunction(file);
+        resultUrl = ocrResult.text;
+        setMarkdownContent(ocrResult.markdown ?? null);
+        setShowMarkdown(false);
       }
       setAfter(resultUrl);
       setPhase("done");
@@ -313,23 +322,28 @@ function AiToolCard({ kind }: { kind: ToolKind }) {
     a.click();
   }
 
+
+
+  function copyText() {
+    if (!after) return;
+    const content = showMarkdown && markdownContent ? markdownContent : after;
+    navigator.clipboard.writeText(content);
+    toast.success("Teks disalin ke clipboard.");
+  }
+
   function downloadText() {
     if (!after) return;
-    const blob = new Blob([after], { type: "text/plain;charset=utf-8" });
+    const content = showMarkdown && markdownContent ? markdownContent : after;
+    const ext = showMarkdown && markdownContent ? "md" : "txt";
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${(file?.name ?? "hasil").replace(/\.[^.]+$/, "")}-ocr.txt`;
+    a.download = `${(file?.name ?? "hasil").replace(/\.[^.]+$/, "")}-ocr.${ext}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 2000);
-  }
-
-  function copyText() {
-    if (!after) return;
-    navigator.clipboard.writeText(after);
-    toast.success("Teks disalin ke clipboard.");
   }
 
   return (
@@ -373,13 +387,22 @@ function AiToolCard({ kind }: { kind: ToolKind }) {
             ) : null}
             {after && isOcrTool ? (
               <>
+                {markdownContent ? (
+                  <Button
+                    variant={showMarkdown ? "default" : "secondary"}
+                    onClick={() => setShowMarkdown((v) => !v)}
+                  >
+                    <FileCode className="size-4" />
+                    {showMarkdown ? "Mode Markdown" : "Mode Teks"}
+                  </Button>
+                ) : null}
                 <Button variant="secondary" onClick={copyText}>
                   <Copy className="size-4" />
-                  Salin teks
+                  Salin
                 </Button>
                 <Button variant="secondary" onClick={downloadText}>
                   <FileText className="size-4" />
-                  Unduh .txt
+                  Unduh
                 </Button>
               </>
             ) : null}
@@ -434,12 +457,13 @@ function AiToolCard({ kind }: { kind: ToolKind }) {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <ScanText className="size-4" /> Hasil Ekstraksi Teks
+              <ScanText className="size-4" />
+              {showMarkdown && markdownContent ? "Hasil Markdown" : "Hasil Ekstraksi Teks"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Textarea
-              value={after}
+              value={showMarkdown && markdownContent ? markdownContent : after}
               readOnly
               rows={12}
               className="resize-y font-mono text-sm"

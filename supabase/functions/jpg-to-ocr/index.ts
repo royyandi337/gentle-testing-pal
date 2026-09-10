@@ -27,29 +27,26 @@ function authHeaders(): Record<string, string> {
   return {};
 }
 
-function findText(value: unknown): string | undefined {
-  if (!value) return undefined;
-  if (typeof value === "string") return value;
+function collectTexts(value: unknown, out: string[] = []): string[] {
+  if (!value) return out;
+  if (typeof value === "string") {
+    if (value.trim().length > 0) out.push(value);
+    return out;
+  }
   if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = findText(item);
-      if (found) return found;
-    }
-    return undefined;
+    for (const item of value) collectTexts(item, out);
+    return out;
   }
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
-    if (typeof obj["text"] === "string") return obj["text"] as string;
-    if (typeof obj["data"] === "string") return obj["data"] as string;
-    for (const v of Object.values(obj)) {
-      const found = findText(v);
-      if (found) return found;
-    }
+    if (typeof obj["text"] === "string" && obj["text"].trim()) out.push(obj["text"] as string);
+    if (typeof obj["data"] === "string" && obj["data"].trim()) out.push(obj["data"] as string);
+    for (const v of Object.values(obj)) collectTexts(v, out);
   }
-  return undefined;
+  return out;
 }
 
-function extractResultText(sse: string): string {
+function extractResultTexts(sse: string): string[] {
   for (const chunk of sse.split("\n\n")) {
     const isComplete = /^event:\s*complete/m.test(chunk);
     const isError = /^event:\s*error/m.test(chunk);
@@ -57,8 +54,8 @@ function extractResultText(sse: string): string {
     if (isError) throw new Error(`Space AI error: ${dataLine ?? "unknown"}`);
     if (!isComplete || !dataLine) continue;
     const parsed = JSON.parse(dataLine);
-    const text = findText(parsed);
-    if (text) return text;
+    const texts = collectTexts(parsed);
+    if (texts.length > 0) return texts;
   }
   throw new Error("Text not found in Space AI response.");
 }
@@ -81,7 +78,7 @@ async function callGradioOcr(
   endpoint: string,
   payload: unknown[],
   attempts = 4,
-): Promise<string> {
+): Promise<string[]> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
@@ -112,7 +109,7 @@ async function callGradioOcr(
         RESULT_TIMEOUT_MS,
       );
       if (!resultRes.ok) throw new Error(`Failed to get result (${resultRes.status}).`);
-      return extractResultText(await resultRes.text());
+      return extractResultTexts(await resultRes.text());
     } catch (error) {
       lastError = error;
       if (attempt < attempts) {
@@ -199,15 +196,18 @@ Deno.serve(async (req: Request) => {
     }
 
     const uploadedPath = await uploadToSpace(file);
-    const text = await callGradioOcr("/predict", [
+    const texts = await callGradioOcr("/predict", [
       { path: uploadedPath, meta: { _type: "gradio.FileData" } },
     ]);
+
+    const text = texts[0] ?? "";
+    const markdown = texts.length > 1 ? texts[1] : undefined;
 
     const { error: dedErr } = await supabase.rpc("deduct_credit", { p_feature_key: "jpg_to_ocr" });
     if (dedErr) console.error("Failed to deduct credit:", dedErr.message);
 
     return new Response(
-      JSON.stringify({ text, source: file.name }),
+      JSON.stringify({ text, markdown, source: file.name }),
       { headers: { ...corsHeaders, "content-type": "application/json" } },
     );
   } catch (error) {
