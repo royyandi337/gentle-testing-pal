@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAiToolsRouteImport } from './routes/_authenticated/ai-tools'
 import { Route as AuthenticatedAkunRouteImport } from './routes/_authenticated/akun'
+import { Route as AuthenticatedBerlanggananRouteImport } from './routes/_authenticated/berlangganan'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedPasFotoRouteImport } from './routes/_authenticated/pas-foto'
 import { Route as AuthenticatedPdfToolsRouteImport } from './routes/_authenticated/pdf-tools'
@@ -56,6 +57,12 @@ const AuthenticatedAkunRoute = AuthenticatedAkunRouteImport.update({
   path: '/akun',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBerlanggananRoute =
+  AuthenticatedBerlanggananRouteImport.update({
+    id: '/berlangganan',
+    path: '/berlangganan',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -120,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/ai-tools': typeof AuthenticatedAiToolsRoute
   '/akun': typeof AuthenticatedAkunRoute
+  '/berlangganan': typeof AuthenticatedBerlanggananRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pas-foto': typeof AuthenticatedPasFotoRoute
   '/pdf-tools': typeof AuthenticatedPdfToolsRoute
@@ -138,6 +146,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/ai-tools': typeof AuthenticatedAiToolsRoute
   '/akun': typeof AuthenticatedAkunRoute
+  '/berlangganan': typeof AuthenticatedBerlanggananRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pas-foto': typeof AuthenticatedPasFotoRoute
   '/pdf-tools': typeof AuthenticatedPdfToolsRoute
@@ -158,6 +167,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/ai-tools': typeof AuthenticatedAiToolsRoute
   '/_authenticated/akun': typeof AuthenticatedAkunRoute
+  '/_authenticated/berlangganan': typeof AuthenticatedBerlanggananRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/pas-foto': typeof AuthenticatedPasFotoRoute
   '/_authenticated/pdf-tools': typeof AuthenticatedPdfToolsRoute
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/ai-tools'
     | '/akun'
+    | '/berlangganan'
     | '/dashboard'
     | '/pas-foto'
     | '/pdf-tools'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/ai-tools'
     | '/akun'
+    | '/berlangganan'
     | '/dashboard'
     | '/pas-foto'
     | '/pdf-tools'
@@ -215,6 +227,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/ai-tools'
     | '/_authenticated/akun'
+    | '/_authenticated/berlangganan'
     | '/_authenticated/dashboard'
     | '/_authenticated/pas-foto'
     | '/_authenticated/pdf-tools'
@@ -279,6 +292,13 @@ declare module '@tanstack/react-router' {
       path: '/akun'
       fullPath: '/akun'
       preLoaderRoute: typeof AuthenticatedAkunRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/berlangganan': {
+      id: '/_authenticated/berlangganan'
+      path: '/berlangganan'
+      fullPath: '/berlangganan'
+      preLoaderRoute: typeof AuthenticatedBerlanggananRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -364,6 +384,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAiToolsRoute: typeof AuthenticatedAiToolsRoute
   AuthenticatedAkunRoute: typeof AuthenticatedAkunRoute
+  AuthenticatedBerlanggananRoute: typeof AuthenticatedBerlanggananRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPasFotoRoute: typeof AuthenticatedPasFotoRoute
   AuthenticatedPdfToolsRoute: typeof AuthenticatedPdfToolsRoute
@@ -378,6 +399,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAiToolsRoute: AuthenticatedAiToolsRoute,
   AuthenticatedAkunRoute: AuthenticatedAkunRoute,
+  AuthenticatedBerlanggananRoute: AuthenticatedBerlanggananRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPasFotoRoute: AuthenticatedPasFotoRoute,
   AuthenticatedPdfToolsRoute: AuthenticatedPdfToolsRoute,

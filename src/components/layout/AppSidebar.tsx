@@ -16,6 +16,7 @@ import {
   Megaphone,
   ShieldCheck,
   Sparkles,
+  CreditCard,
 } from "lucide-react";
 import {
   Sidebar,
@@ -80,6 +81,7 @@ export const NAV_GROUPS = [
     ],
   },
   { label: "Arsip", items: [{ to: "/riwayat", label: "Riwayat", icon: FolderClock }] },
+  { label: "Langganan", items: [{ to: "/berlangganan", label: "Berlangganan", icon: CreditCard }] },
 ] as const;
 
 type SidebarAccount = {
@@ -168,7 +170,7 @@ function AccountStatusCard({
         <span className="text-[12.5px] font-semibold">Paket Reguler</span>
       </div>
       <p className="mt-1 text-[11px] leading-relaxed text-sidebar-foreground/60">Upgrade ke Premium untuk menghapus iklan.</p>
-      <Link to="/akun" className="mt-2 inline-flex text-[11px] font-semibold text-accent hover:underline">Upgrade ke Premium</Link>
+      <Link to="/berlangganan" className="mt-2 inline-flex text-[11px] font-semibold text-accent hover:underline">Upgrade ke Premium</Link>
     </div>
   );
 }
@@ -291,7 +293,7 @@ export function AppSidebar() {
         {sidebarState === "expanded" ? (
           <div>
             <AccountStatusCard tier={tier} role={account.role} trialExpiresAt={account.trialExpiresAt} loading={accountLoading} />
-            {shouldShowUpgradeCTA(effectiveRole) ? <Link to="/akun" className="mx-2 mb-2 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90"><Crown className="size-3.5" /> Upgrade</Link> : null}
+            {shouldShowUpgradeCTA(effectiveRole) ? <Link to="/berlangganan" className="mx-2 mb-2 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90"><Crown className="size-3.5" /> Upgrade</Link> : null}
           </div>
         ) : null}
         <SidebarMenu>

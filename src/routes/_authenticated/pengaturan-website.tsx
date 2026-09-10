@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { refreshSiteSettings } from "@/hooks/useSiteSettings";
+import { SubscriptionReviewPanel } from "@/components/shared/SubscriptionReviewPanel";
 
 export const Route = createFileRoute("/_authenticated/pengaturan-website")({
   ssr: false,
@@ -628,6 +629,7 @@ function PengaturanWebsitePage() {
               )}
             </CardContent>
           </Card>
+          <SubscriptionReviewPanel />
         </TabsContent>
 
         {/* ===== PENGGUNA ===== */}
