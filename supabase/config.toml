@@ -2,3 +2,12 @@ project_id = "tgzamkzwjrvmkceglzza"
 
 [functions.pdf-to-word]
 verify_jwt = true
+
+[functions.remove-background]
+verify_jwt = true
+
+[functions.enhance-image]
+verify_jwt = true
+
+[functions.jpg-to-ocr]
+verify_jwt = true
