@@ -6,10 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const SPACE_BASE = "https://itsvilen-ocr.hf.space";
+const SPACE_BASE = "https://merterbak-deepseek-ocr-demo.hf.space";
 const POST_TIMEOUT_MS = 45_000;
 const RESULT_TIMEOUT_MS = 180_000;
-const DOWNLOAD_TIMEOUT_MS = 60_000;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
@@ -24,34 +23,20 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
 }
 
 function authHeaders(): Record<string, string> {
-  return {};
+  const token = Deno.env.get("HUGGINGFACE_TOKEN");
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-function collectTexts(value: unknown, out: string[] = []): string[] {
-  if (!value) return out;
-  if (typeof value === "string") {
-    if (value.trim().length > 0) out.push(value);
-    return out;
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) collectTexts(item, out);
-    return out;
-  }
-  if (typeof value === "object") {
-    const obj = value as Record<string, unknown>;
-    const textVal = obj["text"];
-    const dataVal = obj["data"];
-    if (typeof textVal === "string" && textVal.trim()) out.push(textVal);
-    if (typeof dataVal === "string" && dataVal.trim()) out.push(dataVal);
-    for (const [k, v] of Object.entries(obj)) {
-      if (k === "text" || k === "data") continue;
-      collectTexts(v, out);
-    }
-  }
-  return out;
-}
-
-function extractResultTexts(sse: string): string[] {
+/**
+ * Extract the result array from the Gradio SSE stream.
+ * DeepSeek-OCR /run returns 5 outputs:
+ *   [0] textbox (plain text / HTML table)
+ *   [1] markdown (rendered markdown with embedded images)
+ *   [2] textbox (detection references)
+ *   [3] image
+ *   [4] gallery
+ */
+function extractResultArray(sse: string): unknown[] {
   for (const chunk of sse.split("\n\n")) {
     const isComplete = /^event:\s*complete/m.test(chunk);
     const isError = /^event:\s*error/m.test(chunk);
@@ -59,10 +44,10 @@ function extractResultTexts(sse: string): string[] {
     if (isError) throw new Error(`Space AI error: ${dataLine ?? "unknown"}`);
     if (!isComplete || !dataLine) continue;
     const parsed = JSON.parse(dataLine);
-    const texts = collectTexts(parsed);
-    if (texts.length > 0) return texts;
+    if (Array.isArray(parsed)) return parsed;
+    throw new Error("Unexpected response format from Space AI.");
   }
-  throw new Error("Text not found in Space AI response.");
+  throw new Error("Result not found in Space AI response.");
 }
 
 async function uploadToSpace(file: File): Promise<string> {
@@ -80,14 +65,13 @@ async function uploadToSpace(file: File): Promise<string> {
 }
 
 async function callGradioOcr(
-  endpoint: string,
   payload: unknown[],
   attempts = 4,
-): Promise<string[]> {
+): Promise<unknown[]> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      const callUrl = `${SPACE_BASE}/gradio_api/call${endpoint}`;
+      const callUrl = `${SPACE_BASE}/gradio_api/call/run`;
       const createRes = await fetchWithTimeout(
         callUrl,
         {
@@ -101,20 +85,20 @@ async function callGradioOcr(
         const detail = await createRes.text().catch(() => "");
         throw new Error(
           createRes.status === 503
-            ? "Space AI is waking up. Try again shortly."
-            : `Failed to create job (${createRes.status}). ${detail.slice(0, 160)}`,
+            ? "Space AI sedang bangun dari mode sleep. Coba lagi beberapa saat."
+            : `Gagal membuat job AI (${createRes.status}). ${detail.slice(0, 160)}`,
         );
       }
       const { event_id: eventId } = (await createRes.json()) as { event_id?: string };
-      if (!eventId) throw new Error("No event id returned.");
+      if (!eventId) throw new Error("Job AI tidak mengembalikan event id.");
 
       const resultRes = await fetchWithTimeout(
         `${callUrl}/${eventId}`,
         { headers: { accept: "text/event-stream", ...authHeaders() } },
         RESULT_TIMEOUT_MS,
       );
-      if (!resultRes.ok) throw new Error(`Failed to get result (${resultRes.status}).`);
-      return extractResultTexts(await resultRes.text());
+      if (!resultRes.ok) throw new Error(`Gagal mengambil hasil AI (${resultRes.status}).`);
+      return extractResultArray(await resultRes.text());
     } catch (error) {
       lastError = error;
       if (attempt < attempts) {
@@ -123,9 +107,30 @@ async function callGradioOcr(
     }
   }
   if (lastError instanceof Error && lastError.name === "AbortError") {
-    throw new Error("Request to Space AI timed out. Try again.");
+    throw new Error("Permintaan ke Space AI timeout. Coba lagi.");
   }
-  throw lastError instanceof Error ? lastError : new Error("OCR failed.");
+  throw lastError instanceof Error ? lastError : new Error("OCR gagal.");
+}
+
+/** Strip embedded base64 images from markdown to keep the text clean. */
+function cleanMarkdown(md: string): string {
+  return md.replace(/!\[[^\]]*\]\(data:image\/[^;]+;base64,[^)]+\)/g, "").trim();
+}
+
+/** Convert HTML tables to plain text for the text output. */
+function htmlToText(html: string): string {
+  return html
+    .replace(/<table[^>]*>/g, "\n")
+    .replace(/<\/table>/g, "\n")
+    .replace(/<tr[^>]*>/g, "")
+    .replace(/<\/tr>/g, "\n")
+    .replace(/<t[dh][^>]*>/g, " | ")
+    .replace(/<\/t[dh]>/g, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/[ \t]+\|/g, " |")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 Deno.serve(async (req: Request) => {
@@ -201,12 +206,20 @@ Deno.serve(async (req: Request) => {
     }
 
     const uploadedPath = await uploadToSpace(file);
-    const texts = await callGradioOcr("/predict", [
+    const results = await callGradioOcr([
       { path: uploadedPath, meta: { _type: "gradio.FileData" } },
+      { path: uploadedPath, meta: { _type: "gradio.FileData" } },
+      "📋 Markdown",
+      "",
+      1,
     ]);
 
-    const text = texts[0] ?? "";
-    const markdown = texts.length > 1 ? texts[1] : undefined;
+    // outputs: [textbox, markdown, textbox, image, gallery]
+    const rawText = typeof results[0] === "string" ? results[0] as string : "";
+    const rawMarkdown = typeof results[1] === "string" ? results[1] as string : "";
+
+    const text = rawText ? htmlToText(rawText) : (rawMarkdown ? cleanMarkdown(rawMarkdown) : "");
+    const markdown = rawMarkdown ? cleanMarkdown(rawMarkdown) : undefined;
 
     const { error: dedErr } = await supabase.rpc("deduct_credit", { p_feature_key: "jpg_to_ocr" });
     if (dedErr) console.error("Failed to deduct credit:", dedErr.message);
@@ -216,7 +229,7 @@ Deno.serve(async (req: Request) => {
       { headers: { ...corsHeaders, "content-type": "application/json" } },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "OCR failed.";
+    const message = error instanceof Error ? error.message : "OCR gagal.";
     return new Response(JSON.stringify({ error: message }), {
       status: 502,
       headers: { ...corsHeaders, "content-type": "application/json" },
