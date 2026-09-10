@@ -39,9 +39,14 @@ function collectTexts(value: unknown, out: string[] = []): string[] {
   }
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
-    if (typeof obj["text"] === "string" && obj["text"].trim()) out.push(obj["text"] as string);
-    if (typeof obj["data"] === "string" && obj["data"].trim()) out.push(obj["data"] as string);
-    for (const v of Object.values(obj)) collectTexts(v, out);
+    const textVal = obj["text"];
+    const dataVal = obj["data"];
+    if (typeof textVal === "string" && textVal.trim()) out.push(textVal);
+    if (typeof dataVal === "string" && dataVal.trim()) out.push(dataVal);
+    for (const [k, v] of Object.entries(obj)) {
+      if (k === "text" || k === "data") continue;
+      collectTexts(v, out);
+    }
   }
   return out;
 }
