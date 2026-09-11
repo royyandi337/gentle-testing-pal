@@ -1,7 +1,12 @@
 // Client-side PDF processing (pdf-lib for structure, pdfjs-dist for rasterizing).
-import { PDFDocument, degrees, rgb, StandardFonts } from "pdf-lib";
+type PdfDocument = import("pdf-lib").PDFDocument;
+
+async function loadPdfLib() {
+  return import("pdf-lib");
+}
 
 export async function readPdf(file: File | Blob) {
+  const { PDFDocument } = await loadPdfLib();
   const bytes = new Uint8Array(await file.arrayBuffer());
   const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
   return doc;
@@ -17,6 +22,7 @@ function toBlob(bytes: Uint8Array): Blob {
 }
 
 export async function mergePdfs(files: File[]) {
+  const { PDFDocument } = await loadPdfLib();
   const out = await PDFDocument.create();
   for (const file of files) {
     const doc = await readPdf(file);
@@ -34,8 +40,9 @@ export type PdfPageSelection = {
 
 export async function assemblePdfPages(selections: PdfPageSelection[]) {
   if (!selections.length) throw new Error("Pilih setidaknya satu halaman.");
+  const { PDFDocument, degrees } = await loadPdfLib();
   const out = await PDFDocument.create();
-  const sources = new Map<File, PDFDocument>();
+  const sources = new Map<File, PdfDocument>();
   for (const selection of selections) {
     let source = sources.get(selection.file);
     if (!source) {
@@ -155,6 +162,7 @@ export function parsePageRanges(input: string, pageCount: number): number[] {
 }
 
 export async function extractPages(file: File, indices: number[]) {
+  const { PDFDocument } = await loadPdfLib();
   const src = await readPdf(file);
   const out = await PDFDocument.create();
   const pages = await out.copyPages(src, indices);
@@ -168,7 +176,8 @@ export async function deletePages(file: File, indices: number[]) {
   return extractPagesFromDoc(src, keep);
 }
 
-async function extractPagesFromDoc(src: PDFDocument, indices: number[]) {
+async function extractPagesFromDoc(src: PdfDocument, indices: number[]) {
+  const { PDFDocument } = await loadPdfLib();
   const out = await PDFDocument.create();
   const pages = await out.copyPages(src, indices);
   pages.forEach((p) => out.addPage(p));
@@ -191,6 +200,7 @@ export async function duplicatePages(file: File, indices: number[]) {
 }
 
 export async function rotatePages(file: File, indices: number[], angle: number) {
+  const { degrees } = await loadPdfLib();
   const doc = await readPdf(file);
   doc.getPages().forEach((page, i) => {
     if (indices.length === 0 || indices.includes(i)) {
@@ -214,6 +224,7 @@ function range(from: number, to: number) {
 }
 
 export async function watermarkPdf(file: File, text: string, opacity = 0.25) {
+  const { StandardFonts, rgb, degrees } = await loadPdfLib();
   const doc = await readPdf(file);
   const font = await doc.embedFont(StandardFonts.HelveticaBold);
   for (const page of doc.getPages()) {
@@ -244,6 +255,7 @@ export async function protectPdf(file: File, userPassword: string, ownerPassword
 
 /** Removes encryption from a PDF by re-saving without password. Requires the correct password to load. */
 export async function unlockPdf(file: File, password: string) {
+  const { PDFDocument } = await loadPdfLib();
   const bytes = new Uint8Array(await file.arrayBuffer());
   const doc = await PDFDocument.load(bytes, {
     ignoreEncryption: true,
@@ -293,6 +305,7 @@ export async function compressPdfToTarget(
   for (const scale of scales) {
     for (const quality of qualities) {
       onProgress?.({ phase: `Skala ${scale}, kualitas ${Math.round(quality * 100)}%`, done: 0, total: numPages });
+      const { PDFDocument } = await loadPdfLib();
       const out = await PDFDocument.create();
 
       for (let i = 1; i <= numPages; i++) {
@@ -328,6 +341,7 @@ export async function compressPdfToTarget(
   }
 
   // Last resort: lowest scale + lowest quality.
+  const { PDFDocument } = await loadPdfLib();
   const out = await PDFDocument.create();
   for (let i = 1; i <= numPages; i++) {
     onProgress?.({ phase: `Render akhir halaman ${i}/${numPages}`, done: i, total: numPages });
@@ -386,6 +400,7 @@ async function fileToJpgBytes(file: File): Promise<{ bytes: Uint8Array; isPng: b
 }
 
 export async function imagesToPdf(files: File[], fit: "a4" | "auto" = "a4") {
+  const { PDFDocument } = await loadPdfLib();
   const out = await PDFDocument.create();
   for (const file of files) {
     const { bytes, isPng } = await fileToJpgBytes(file);
