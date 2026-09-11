@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { FileText, RotateCw, Scissors, Layers, FileOutput, Sparkles } from "lucide-react";
+import { FileText, RotateCw, Scissors, Layers, FileOutput, Sparkles, Download, Package, Trash2, Image as ImageIcon } from "lucide-react";
 import { PageHeader } from "@/components/layout/AppShell";
 import { FileDropzone } from "@/components/shared/FileDropzone";
 import { PdfToWordCard } from "@/components/shared/PdfToWordCard";
@@ -17,8 +17,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { downloadBlob } from "@/lib/image";
+import { downloadZip } from "@/lib/zip";
 import {
   assemblePdfPages,
   compressPdf,
@@ -128,6 +130,64 @@ function PdfToolsPage() {
   const [compressTarget, setCompressTarget] = useState(1);
   const [batchFiles, setBatchFiles] = useState<File[]>([]);
 
+  // PDF to Image state
+  const [imgFormat, setImgFormat] = useState<"image/jpeg" | "image/png">("image/jpeg");
+  const [imgScale, setImgScale] = useState(2);
+  const [imgQuality, setImgQuality] = useState(0.9);
+  const [imgPages, setImgPages] = useState<{ blob: Blob; url: string; name: string }[]>([]);
+  const [imgConverting, setImgConverting] = useState(false);
+
+  const convertPdfToImages = useCallback(async () => {
+    if (!fromPdfFile.length) return;
+    setImgConverting(true);
+    setImgPages([]);
+    try {
+      const file = fromPdfFile[0]!;
+      const base = baseName(file);
+      const ext = imgFormat === "image/jpeg" ? "jpg" : "png";
+      const blobs = await pdfToImages(file, imgFormat, imgScale, (done, total) => {
+        setProgress(Math.round((done / total) * 100));
+        setMessage(`Merender halaman ${done}/${total}...`);
+      }, imgQuality);
+      const pages = blobs.map((blob, i) => ({
+        blob,
+        url: URL.createObjectURL(blob),
+        name: `${base}-hal-${i + 1}.${ext}`,
+      }));
+      setImgPages(pages);
+      setPhase("done");
+      setMessage(`${pages.length} halaman berhasil dikonversi.`);
+    } catch (error) {
+      setPhase("error");
+      setMessage(error instanceof Error ? error.message : "Gagal mengkonversi PDF.");
+    } finally {
+      setImgConverting(false);
+      setProgress(undefined);
+    }
+  }, [fromPdfFile, imgFormat, imgScale, imgQuality, setProgress, setMessage, setPhase]);
+
+  const clearImgPages = useCallback(() => {
+    for (const p of imgPages) URL.revokeObjectURL(p.url);
+    setImgPages([]);
+  }, [imgPages]);
+
+  const downloadImgZip = useCallback(async () => {
+    if (!imgPages.length) return;
+    try {
+      setMessage("Membuat ZIP...");
+      setPhase("working");
+      await downloadZip(
+        imgPages.map((p) => ({ name: p.name, blob: p.blob })),
+        "pdf-to-image.zip",
+      );
+      setPhase("done");
+      setMessage("Semua halaman berhasil dikemas dalam ZIP.");
+    } catch {
+      setPhase("error");
+      setMessage("Gagal membuat ZIP.");
+    }
+  }, [imgPages, setMessage, setPhase]);
+
   // Thumbnail grid state for merge and manage modes
   const [mergeItems, setMergeItems] = useState<PageItem[]>([]);
   const [manageItems, setManageItems] = useState<PageItem[]>([]);
@@ -192,41 +252,108 @@ function PdfToolsPage() {
 
           <ToolCard
             title="PDF ke Gambar"
-            description="Ubah setiap halaman PDF menjadi berkas JPG atau PNG."
+            description="Ubah setiap halaman PDF menjadi berkas JPG atau PNG dengan pilihan resolusi dan kualitas."
           >
             <FileDropzone
               accept="application/pdf"
               files={fromPdfFile}
-              onFiles={setFromPdfFile}
+              onFiles={(files) => {
+                setFromPdfFile(files);
+                clearImgPages();
+              }}
               hint="Satu berkas PDF"
             />
-            <div className="flex gap-2">
-              {(["image/jpeg", "image/png"] as const).map((type) => (
-                <Button
-                  key={type}
-                  variant={type === "image/jpeg" ? "default" : "secondary"}
-                  disabled={!fromPdfFile.length || phase === "working"}
-                  onClick={() =>
-                    run("pdf-to-image", async () => {
-                      const file = fromPdfFile[0]!;
-                      setProgress(0);
-                      setMessage("Merender halaman PDF...");
-                      const blobs = await pdfToImages(file, type, 2, (done, total) => {
-                        setProgress(Math.round((done / total) * 100));
-                        setMessage(`Merender halaman ${done}/${total}...`);
-                      });
-                      const ext = type === "image/jpeg" ? "jpg" : "png";
-                      return blobs.map((blob, i) => ({
-                        blob,
-                        fileName: `${baseName(file)}-hal-${i + 1}.${ext}`,
-                      }));
-                    })
-                  }
-                >
-                  Ke {type === "image/jpeg" ? "JPG" : "PNG"}
-                </Button>
-              ))}
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label>Format</Label>
+                <Select value={imgFormat} onValueChange={(v) => setImgFormat(v as "image/jpeg" | "image/png")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="image/jpeg">JPG / JPEG</SelectItem>
+                    <SelectItem value="image/png">PNG</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Resolusi</Label>
+                <Select value={String(imgScale)} onValueChange={(v) => setImgScale(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1x — Normal</SelectItem>
+                    <SelectItem value="1.5">1.5x</SelectItem>
+                    <SelectItem value="2">2x — Direkomendasi</SelectItem>
+                    <SelectItem value="3">3x — Tinggi</SelectItem>
+                    <SelectItem value="4">4x — Sangat Tinggi</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {imgFormat === "image/jpeg" && (
+                <div className="space-y-1.5">
+                  <Label>Kualitas JPG</Label>
+                  <Select value={String(imgQuality)} onValueChange={(v) => setImgQuality(Number(v))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0.7">70%</SelectItem>
+                      <SelectItem value="0.8">80%</SelectItem>
+                      <SelectItem value="0.9">90%</SelectItem>
+                      <SelectItem value="1">100%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+n                disabled={!fromPdfFile.length || imgConverting}
+                onClick={convertPdfToImages}
+              >
+                <ImageIcon className="size-4" />
+                {imgConverting ? "Memproses..." : "Konversi PDF"}
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={!imgPages.length || imgConverting}
+                onClick={downloadImgZip}
+              >
+                <Package className="size-4" />
+                Download Semua (ZIP)
+              </Button>
+              <Button
+                variant="outline"
+                disabled={!imgPages.length && !fromPdfFile.length}
+                onClick={() => {
+                  clearImgPages();
+                  setFromPdfFile([]);
+                }}
+              >
+                <Trash2 className="size-4" />
+                Bersihkan
+              </Button>
+            </div>
+
+            {imgPages.length > 0 && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {imgPages.map((page, i) => (
+                  <div key={i} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Halaman {i + 1}</span>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => downloadBlob(page.blob, page.name)}
+                      >
+                        <Download className="size-3.5" />
+                      </Button>
+                    </div>
+                    <div className="overflow-hidden rounded-md bg-muted">
+                      <img src={page.url} alt={`Halaman ${i + 1}`} className="w-full" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </ToolCard>
         </TabsContent>
 

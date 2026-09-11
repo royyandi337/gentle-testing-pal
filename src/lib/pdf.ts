@@ -418,6 +418,7 @@ export async function pdfToImages(
   type: "image/jpeg" | "image/png",
   scale = 2,
   onProgress?: (done: number, total: number) => void,
+  quality = 0.92,
 ) {
   const pdfjs = await import("pdfjs-dist");
   const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
@@ -433,16 +434,14 @@ export async function pdfToImages(
     canvas.width = Math.floor(viewport.width);
     canvas.height = Math.floor(viewport.height);
     const ctx = canvas.getContext("2d")!;
-    if (type === "image/jpeg") {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvas, canvasContext: ctx, viewport }).promise;
     const blob = await new Promise<Blob>((resolve, reject) =>
       canvas.toBlob(
         (b) => (b ? resolve(b) : reject(new Error("Gagal merender halaman."))),
         type,
-        0.92,
+        type === "image/jpeg" ? quality : undefined,
       ),
     );
     blobs.push(blob);
