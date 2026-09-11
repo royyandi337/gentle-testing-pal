@@ -306,7 +306,7 @@ function PdfToolsPage() {
 
             <div className="flex flex-wrap gap-2">
               <Button
-n                disabled={!fromPdfFile.length || imgConverting}
+                disabled={!fromPdfFile.length || imgConverting}
                 onClick={convertPdfToImages}
               >
                 <ImageIcon className="size-4" />
