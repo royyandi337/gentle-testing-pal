@@ -89,7 +89,7 @@ function useRunner(category: HistoryCategory) {
     }
   }
 
-  return { phase, message, progress, run, setProgress, setMessage };
+  return { phase, message, progress, run, setPhase, setProgress, setMessage };
 }
 
 function ToolCard({
@@ -113,7 +113,7 @@ function ToolCard({
 }
 
 function PdfToolsPage() {
-  const { phase, message, progress, run, setProgress, setMessage } = useRunner("pdf");
+  const { phase, message, progress, run, setPhase, setProgress, setMessage } = useRunner("pdf");
 
   const [toPdfFiles, setToPdfFiles] = useState<File[]>([]);
   const [fromPdfFile, setFromPdfFile] = useState<File[]>([]);
